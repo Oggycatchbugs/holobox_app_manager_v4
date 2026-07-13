@@ -491,6 +491,89 @@ async function handleAdminCreateCustomer(req, res) {
   const saved = await saveState(current);
   sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user), customer, user: sanitizeUser(user) });
 }
+
+async function handleAdminUpdateCustomerLogin(req, res, customerId) {
+  const auth = await requireAdmin(req, res);
+  if (!auth) return;
+  const body = await readJson(req);
+  const row = await getStateRow();
+  const current = mergeState(row.data);
+  const customer = current.customers.find(c => String(c.id) === String(customerId));
+  if (!customer) {
+    sendError(res, 404, "Customer not found.");
+    return;
+  }
+
+  let user = current.users.find(u => String(u.customerId || "") === String(customerId) && normalizeName(u.role) === "customer");
+  const username = cleanName(body.username || user?.username || "");
+  if (!username) {
+    sendError(res, 400, "Username is required.");
+    return;
+  }
+  const duplicated = current.users.find(u => normalizeName(u.username) === normalizeName(username) && String(u.id || "") !== String(user?.id || ""));
+  if (duplicated) {
+    sendError(res, 409, "Username already exists.");
+    return;
+  }
+
+  if (!user) {
+    const password = String(body.password || "123456");
+    user = {
+      id: `user_${uid()}`,
+      username,
+      name: customer.name,
+      role: "customer",
+      customerId: customer.id,
+      passwordHash: hashPassword(password),
+      active: true,
+      language: body.language || "vi",
+      firstLoginDone: false,
+      createdAt: Date.now()
+    };
+    current.users.unshift(user);
+  } else {
+    user.username = username;
+    user.name = cleanName(body.name || user.name || customer.name);
+    user.role = "customer";
+    user.customerId = customer.id;
+    user.active = body.active === "false" ? false : true;
+    user.language = body.language || user.language || "vi";
+    if (String(body.password || "").trim()) {
+      user.passwordHash = hashPassword(String(body.password));
+      user.passwordUpdatedAt = new Date().toISOString();
+    }
+  }
+
+  addLog(current, "Customers", "Customer login updated", "SUCCESS", customer.name);
+  const saved = await saveState(current);
+  sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user), customer, user: sanitizeUser(user) });
+}
+
+async function handleAdminDeleteCustomer(req, res, customerId) {
+  const auth = await requireAdmin(req, res);
+  if (!auth) return;
+  const row = await getStateRow();
+  const current = mergeState(row.data);
+  const customer = current.customers.find(c => String(c.id) === String(customerId));
+  if (!customer) {
+    sendError(res, 404, "Customer not found.");
+    return;
+  }
+
+  current.customers = current.customers.filter(c => String(c.id) !== String(customerId));
+  current.users = current.users.filter(u => String(u.customerId || "") !== String(customerId));
+  current.devices = current.devices.filter(d => String(d.customerId || "") !== String(customerId));
+  current.videos = current.videos.filter(v => String(v.customerId || "") !== String(customerId));
+  current.audio = current.audio.filter(a => String(a.customerId || "") !== String(customerId));
+  current.videoPlaylists = current.videoPlaylists.filter(p => String(p.customerId || "") !== String(customerId));
+  current.audioPlaylists = current.audioPlaylists.filter(p => String(p.customerId || "") !== String(customerId));
+  current.autoPlaylists = current.autoPlaylists.filter(p => String(p.customerId || "") !== String(customerId));
+  current.assistantScripts = current.assistantScripts.filter(s => String(s.customerId || "") !== String(customerId));
+
+  addLog(current, "Customers", "Customer deleted", "WARNING", customer.name);
+  const saved = await saveState(current);
+  sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user) });
+}
 async function handleAdminCreateDevice(req, res) {
   const auth = await requireAdmin(req, res);
   if (!auth) return;
@@ -1145,7 +1228,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.2-phase2-login-password-eye",
+        version: "13.1.3-phase2-modal-mode-info-delete-fix",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
@@ -1182,6 +1265,18 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/api/admin/devices" && req.method === "POST") {
       await handleAdminCreateDevice(req, res);
+      return;
+    }
+
+    const customerLoginMatch = pathname.match(/^\/api\/admin\/customers\/([^/]+)\/login$/);
+    if (customerLoginMatch && req.method === "PUT") {
+      await handleAdminUpdateCustomerLogin(req, res, decodeURIComponent(customerLoginMatch[1]));
+      return;
+    }
+
+    const customerDeleteMatch = pathname.match(/^\/api\/admin\/customers\/([^/]+)$/);
+    if (customerDeleteMatch && req.method === "DELETE") {
+      await handleAdminDeleteCustomer(req, res, decodeURIComponent(customerDeleteMatch[1]));
       return;
     }
 

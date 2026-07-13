@@ -750,3 +750,113 @@ label { display: grid; gap: 8px; font-weight: 800; color: var(--ink); }
   margin: 0;
   line-height: 1;
 }
+
+
+/* === v13.1.3 modal, text, customer mode, info/delete fixes === */
+.modal-backdrop { cursor: default; }
+.modal-card, .modal-card * { cursor: auto; }
+.icon-close {
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 3;
+}
+.modal-actions .btn, .modal-actions .action-btn {
+  pointer-events: auto;
+}
+.modal-form {
+  box-shadow: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.locked-login-info label,
+.modal-form label {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.topbar h1,
+.topbar p,
+.panel-toolbar h2,
+.stat-caption,
+.sub,
+.table-row,
+.media-card,
+.intent-card,
+.contact-card,
+.preview-main,
+.preview-sub {
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.35;
+}
+.customer-grid {
+  grid-template-columns: minmax(180px, 1.3fr) minmax(150px, 1fr) 80px 110px minmax(260px, 1.2fr);
+}
+.actions {
+  flex-wrap: wrap;
+}
+.btn-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+.preview-screen.ads-mode {
+  padding: 16px;
+}
+.holobox-ads-player {
+  width: 100%;
+  height: min(48vh, 420px);
+  border-radius: 22px;
+  background: #050505;
+  object-fit: contain;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.ads-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  border-radius: 20px;
+  border: 1px dashed rgba(255,189,89,.35);
+  color: rgba(255,255,255,.78);
+  padding: 18px;
+  text-align: center;
+}
+.mode-toggle-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(152, 12, 10, .045);
+  border: 1px solid rgba(152, 12, 10, .08);
+}
+.mode-toggle-panel h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.device-mode-list {
+  display: grid;
+  gap: 10px;
+}
+.device-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(28,37,55,.08);
+}
+.device-mode-row.active {
+  border-color: rgba(152,12,10,.22);
+  box-shadow: 0 12px 30px rgba(152,12,10,.07);
+}
+@media (max-width: 980px) {
+  .customer-grid {
+    grid-template-columns: 1fr;
+  }
+  .device-mode-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

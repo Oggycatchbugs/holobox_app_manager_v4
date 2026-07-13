@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.2-phase2-login-password-eye";
+const APP_VERSION = "13.1.3-phase2-modal-mode-info-delete-fix";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -162,7 +162,7 @@ function icon(name) {
     home: "⌂", video: "▶", audio: "♪", logout: "↩", users: "👥", monitor: "▣", media: "▤",
     assistant: "◉", logs: "≡", wrench: "⚙", settings: "⚙", plus: "+", upload: "⇧",
     trash: "×", play: "▶", phone: "☎", mail: "✉", lock: "●", dashboard: "◆", back: "←",
-    save: "✓", refresh: "↻", search: "⌕", eye: "👁", eyeOff: "◉"
+    save: "✓", refresh: "↻", search: "⌕", eye: "👁", eyeOff: "◉", info: "i", edit: "✎"
   };
   return `<span class="ico">${map[name] || "•"}</span>`;
 }
@@ -252,9 +252,9 @@ function toast(type, title, message = "") {
   setTimeout(() => el.remove(), 4200);
 }
 function modal(title, body, actions = "") {
-  modalRoot.innerHTML = `<div class="modal-backdrop" data-action="close-modal">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div class="modal-head"><h2>${escapeHtml(title)}</h2><button class="icon-close" data-action="close-modal">×</button></div>
+  modalRoot.innerHTML = `<div class="modal-backdrop" data-backdrop-close="true">
+    <div class="modal-card">
+      <div class="modal-head"><h2>${escapeHtml(title)}</h2><button class="icon-close" data-action="close-modal" type="button">×</button></div>
       <div class="modal-body">${body}</div>
       ${actions ? `<div class="modal-actions">${actions}</div>` : ""}
     </div>
@@ -372,11 +372,11 @@ function renderLanguageTools() {
   </div>`;
 }
 
-function renderTopbar(title, subtitle = "") {
+function renderTopbar(title, subtitle = "", subtitleIsHtml = false) {
   return `<header class="topbar">
     <div>
       <h1>${escapeHtml(title)}</h1>
-      ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+      ${subtitle ? `<p>${subtitleIsHtml ? subtitle : escapeHtml(subtitle)}</p>` : ""}
     </div>
     <div class="topbar-actions">
       ${state.user?.role === "admin" && state.portal === "customer" ? `<button class="header-btn" data-action="back-admin">${icon("back")} ${t("Back to Admin")}</button>` : ""}
@@ -402,7 +402,7 @@ function renderAdminShell() {
   return `<div class="app-shell phase-shell admin-shell">
     ${renderSidebar(adminNav, "Admin Portal")}
     <main class="main">
-      ${renderTopbar(t(state.view === "dashboard" ? "Dashboard" : adminNav.find(x => x[0] === state.view)?.[1] || "Dashboard"), "Full access to customers, devices, media, logs and maintenance.")}
+      ${renderTopbar(t(state.view === "dashboard" ? "Dashboard" : adminNav.find(x => x[0] === state.view)?.[1] || "Dashboard"), "Quản lý khách hàng, lễ tân ảo, nhật ký và bảo trì.")}
       <section class="content">${renderAdminView()}</section>
     </main>
   </div>`;
@@ -471,8 +471,8 @@ function renderAdminCustomers() {
             <div>${statusBadge(c.status || "active")}</div>
             <div class="actions">
               <button class="btn btn-small btn-primary" data-action="open-customer" data-id="${c.id}">${t("Open")}</button>
-              ${user ? `<button class="btn btn-small" data-action="copy" data-copy="${escapeHtml(user.username)}">${t("Copy")} user</button>` : ""}
-              <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
+              ${user ? `<button class="btn btn-small" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Info</button>` : ""}
+              <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button><button class="btn btn-small btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
             </div>
           </div>`;
         }).join("") || `<div class="empty">${t("No data")}</div>`}
@@ -502,8 +502,8 @@ function renderAdminCustomerDashboard(customerId) {
         <p class="subtitle">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "—")}</p>
       </div>
       <div class="actions">
-        ${user ? `<button class="btn" data-action="copy" data-copy="${escapeHtml(user.username)}">Copy username</button>` : ""}
-        <button class="btn btn-primary" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
+        ${user ? `<button class="btn" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Login info</button>` : ""}
+        <button class="btn btn-primary" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button><button class="btn btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
       </div>
     </div>
 
@@ -521,7 +521,7 @@ function renderAdminCustomerDashboard(customerId) {
         <label>Device name<input class="input" name="name" required placeholder="HoloBox Sảnh Chính"></label>
         <label>${t("Device code")}<input class="input" name="deviceCode" required placeholder="HOLOBOX_01"></label>
         <label>Stream URL<input class="input" name="streamUrl" placeholder="http://.../video_feed"></label>
-        <label>${t("Mode")}<select name="runtimeMode"><option value="ASSISTANT">Assistant Mode</option><option value="JUST_ADS">Just Ads Mode</option></select></label>
+        <input type="hidden" name="runtimeMode" value="ASSISTANT"><p class="subtitle">Customer sẽ tự chuyển giữa Just Ads Mode và Assistant Mode ở màn hình của khách.</p>
         <button class="btn btn-primary wide" type="submit">${t("Create device")}</button>
       </form>
 
@@ -546,7 +546,7 @@ function renderAdminDevices() {
       <label>${t("Device code")}<input class="input" name="deviceCode" required placeholder="HOLOBOX_01"></label>
       <label>${t("Customer")}<select name="customerId" required>${state.data.customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("")}</select></label>
       <label>Stream URL<input class="input" name="streamUrl" placeholder="http://.../video_feed"></label>
-      <label>${t("Mode")}<select name="runtimeMode"><option value="ASSISTANT">Assistant Mode</option><option value="JUST_ADS">Just Ads Mode</option></select></label>
+      <input type="hidden" name="runtimeMode" value="ASSISTANT"><p class="subtitle">Customer sẽ tự chuyển giữa Just Ads Mode và Assistant Mode ở màn hình của khách.</p>
       <button class="action-btn primary" type="submit">${t("Create device")}</button>
     </form>
     <section class="panel"><div class="panel-toolbar"><h2>${t("Devices")}</h2><button class="mini-btn" data-action="refresh">${icon("refresh")} Refresh</button></div>${renderDeviceTable(state.data.devices, true)}</section>
@@ -619,7 +619,13 @@ function getAssistantScriptsForAdmin() {
   return state.data.assistantScripts || [];
 }
 function renderIntentCard(s) {
-  return `<div class="card intent-card"><div class="intent-title">${escapeHtml(s.title || s.intent || "Intent")}</div><p>${escapeHtml(s.text || "—")}</p><div class="sub">Customer: ${escapeHtml(customerName(s.customerId))}</div><div class="sub">Audio: ${escapeHtml(mediaName(s.audioId, "audio") || "—")}</div></div>`;
+  return `<div class="card intent-card">
+    <div class="intent-title">${escapeHtml(s.title || s.intent || "Intent")}</div>
+    <p>${escapeHtml(s.text || "—")}</p>
+    <div class="sub">Customer: ${escapeHtml(customerName(s.customerId))}</div>
+    <div class="sub">Audio: ${escapeHtml(mediaName(s.audioId, "audio") || "—")}</div>
+    <div class="actions"><button class="btn btn-small btn-danger" data-action="delete-assistant-template" data-id="${s.id}">${t("Delete")}</button></div>
+  </div>`;
 }
 function renderAdminLogs() {
   return `<section class="panel"><div class="panel-toolbar"><h2>${t("Logs")}</h2><button class="mini-btn" data-action="refresh">${icon("refresh")} Refresh</button></div>${renderLogList(state.data.logs)}</section>`;
@@ -650,10 +656,11 @@ function renderAdminSettings() {
 
 function renderCustomerShell() {
   const device = primaryDevice();
+  const statusText = `${computedDeviceStatus(device)} · ${device?.runtimeMode === "JUST_ADS" ? t("Just Ads Mode") : t("Assistant Mode")}`;
   return `<div class="app-shell phase-shell customer-shell">
     ${renderSidebar(customerNav, "Customer App")}
     <main class="main">
-      ${renderTopbar(device?.name || customerName(), `${statusBadge(computedDeviceStatus(device))} · ${escapeHtml(device?.runtimeMode || "ASSISTANT")}`)}
+      ${renderTopbar(device?.name || customerName(), statusText)}
       <section class="content">${renderCustomerView()}</section>
     </main>
   </div>`;
@@ -677,12 +684,46 @@ function renderCustomerHome() {
     </aside>
   </div>`;
 }
+function adsPlaylistItems() {
+  const cid = currentCustomerId();
+  const playlists = customerPlaylists(cid);
+  const selected = playlists.find(p => p.autoGenerated) || playlists[0];
+  const items = (selected?.items || [])
+    .map(i => customerVideos(cid).find(v => v.id === i.mediaId))
+    .filter(Boolean);
+  return items.length ? items : customerVideos(cid);
+}
+function renderAdsPlayer() {
+  const items = adsPlaylistItems();
+  if (!items.length) {
+    return `<div class="ads-empty">${t("No data")} · Hãy upload video và tạo playlist trước.</div>`;
+  }
+  const first = items[0];
+  const ids = items.map(v => v.id).join(",");
+  return `<video class="holobox-ads-player" data-ads-player data-ids="${escapeHtml(ids)}" data-index="0" src="/api/media/file/video/${encodeURIComponent(first.id)}" autoplay muted playsinline controls></video>`;
+}
+function renderCustomerDeviceModeControls(activeDevice) {
+  const devices = customerDevices();
+  if (!devices.length) return `<div class="empty">Customer chưa được gán HoloBox.</div>`;
+  return `<div class="device-mode-list">
+    ${devices.map(d => {
+      const ads = d.runtimeMode === "JUST_ADS";
+      return `<div class="device-mode-row ${activeDevice?.id === d.id ? "active" : ""}">
+        <div><b>${escapeHtml(d.name || d.deviceCode)}</b><div class="sub">${escapeHtml(d.deviceCode || "")} · ${ads ? t("Just Ads Mode") : t("Assistant Mode")}</div></div>
+        <button class="btn ${ads ? "" : "btn-primary"}" data-action="toggle-customer-device-mode" data-id="${d.id}">
+          ${ads ? "Chuyển sang Assistant Mode" : "Chuyển sang Just Ads Mode"}
+        </button>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
 function renderHoloboxScreenPreview(device) {
+  const isAds = device?.runtimeMode === "JUST_ADS";
   return `<div class="holobox-preview-card">
-    <div class="preview-screen">
-      <div class="preview-topline">${escapeHtml(device?.runtimeMode === "JUST_ADS" ? t("Just Ads Mode") : t("Assistant Mode"))}</div>
-      <div class="preview-main">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>
-      <div class="preview-sub">${t("Now playing")}: ${escapeHtml(device?.currentAd || mediaName(device?.currentVideoId, "video") || "—")}</div>
+    <div class="preview-screen ${isAds ? "ads-mode" : "assistant-mode"}">
+      <div class="preview-topline">${escapeHtml(isAds ? t("Just Ads Mode") : t("Assistant Mode"))}</div>
+      ${isAds ? renderAdsPlayer() : `<div class="preview-main">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>
+      <div class="preview-sub">${t("Now playing")}: ${escapeHtml(device?.currentAd || mediaName(device?.currentVideoId, "video") || "—")}</div>`}
     </div>
     <div class="preview-meta">
       <div>${t("Status")}: ${statusBadge(computedDeviceStatus(device))}</div>
@@ -693,8 +734,13 @@ function renderHoloboxScreenPreview(device) {
       <button class="big-power-btn" data-action="customer-start-device" data-id="${device?.id || ""}">${t("Start HoloBox")}</button>
       <button class="action-btn" data-action="customer-stop-device" data-id="${device?.id || ""}">${t("Stop")}</button>
     </div>
+    <div class="mode-toggle-panel">
+      <h3>Chuyển chế độ HoloBox</h3>
+      ${renderCustomerDeviceModeControls(device)}
+    </div>
   </div>`;
 }
+
 function renderMiniMediaList(list, kind) {
   return `<div class="mini-media-list">${list.slice(0, 8).map(item => `<div class="mini-media-row"><div><b>${escapeHtml(item.name)}</b><div class="sub">${escapeHtml(item.duration || "00:00")} · ${escapeHtml(kind === "audio" ? item.role || "audio" : item.status || "Active")}</div></div>${kind === "audio" ? icon("audio") : icon("video")}</div>`).join("") || `<div class="empty">${t("No data")}</div>`}</div>`;
 }
@@ -888,6 +934,65 @@ const actionHandlers = {
       toast("success", "Copied", value);
     }
   },
+  "customer-login-info": async target => {
+    const customerId = target.dataset.id || "";
+    const customer = state.data.customers.find(c => c.id === customerId);
+    const user = state.data.users.find(u => String(u.customerId || "") === String(customerId) && normalizeName(u.role) === "customer");
+    if (!customer) return;
+    modal("Customer login info", `<div class="contact-card locked-login-info">
+      <label>Customer<input class="input" value="${escapeHtml(customer.name)}" disabled></label>
+      <label>Username<input class="input" value="${escapeHtml(user?.username || "—")}" disabled></label>
+      <label>Password<input class="input" value="••••••••" disabled></label>
+      <p class="subtitle">Thông tin đang khóa để tránh lộ mật khẩu. Bấm Edit để đổi username hoặc reset mật khẩu tạm.</p>
+    </div>`, `<button class="btn" data-action="customer-login-edit" data-id="${customerId}">${icon("edit")} Edit</button><button class="btn btn-primary" data-action="close-modal">${t("Close")}</button>`);
+  },
+  "customer-login-edit": async target => {
+    const customerId = target.dataset.id || "";
+    const customer = state.data.customers.find(c => c.id === customerId);
+    const user = state.data.users.find(u => String(u.customerId || "") === String(customerId) && normalizeName(u.role) === "customer");
+    if (!customer) return;
+    modal("Edit customer login", `<form class="form-card modal-form" data-form="admin-edit-customer-login">
+      <input type="hidden" name="customerId" value="${escapeHtml(customerId)}">
+      <label>Customer<input class="input" value="${escapeHtml(customer.name)}" disabled></label>
+      <label>Username<input class="input" name="username" required value="${escapeHtml(user?.username || "")}"></label>
+      <label>New temporary password<input class="input" name="password" type="text" placeholder="Để trống nếu không đổi"></label>
+      <p class="subtitle">Sau khi lưu, gửi username và mật khẩu tạm mới cho khách nếu bạn có đổi mật khẩu.</p>
+      <button class="btn btn-primary wide" type="submit">${t("Save")}</button>
+    </form>`, `<button class="btn" data-action="close-modal">${t("Close")}</button>`);
+  },
+  "delete-customer": async target => {
+    const id = target.dataset.id || "";
+    const customer = state.data.customers.find(c => c.id === id);
+    const ok = await confirmModal("Delete customer", `Xóa khách hàng "${customer?.name || id}"? Việc này sẽ xóa account customer, device, media records, playlist và assistant template của khách này.`);
+    if (!ok) return;
+    const payload = await apiJson(`/api/admin/customers/${encodeURIComponent(id)}`, { method: "DELETE" });
+    state.data = mergeData(payload.data);
+    state.selectedCustomerId = "";
+    toast("success", "Customer deleted");
+    render();
+  },
+  "toggle-customer-device-mode": async target => {
+    const id = target.dataset.id || "";
+    const device = state.data.devices.find(d => d.id === id);
+    if (!device) return toast("error", "Device not found");
+    const next = device.runtimeMode === "JUST_ADS" ? "ASSISTANT" : "JUST_ADS";
+    device.runtimeMode = next;
+    device.powerCommand = "START";
+    device.currentScreen = next === "JUST_ADS" ? "Ads Playlist" : "Assistant";
+    device.requestedAt = new Date().toISOString();
+    await saveData();
+    toast("success", "Mode changed", next === "JUST_ADS" ? "Just Ads Mode" : "Assistant Mode");
+    render();
+  },
+  "delete-assistant-template": async target => {
+    const id = target.dataset.id || "";
+    const ok = await confirmModal("Delete assistant template", "Bạn có chắc muốn xóa template lễ tân này không?");
+    if (!ok) return;
+    state.data.assistantScripts = state.data.assistantScripts.filter(s => s.id !== id);
+    await saveData();
+    toast("success", "Assistant template deleted");
+    render();
+  },
   "view-as-customer": async target => {
     state.viewingCustomerId = target.dataset.id;
     state.portal = "customer";
@@ -974,11 +1079,30 @@ async function handleAction(action, target) {
 }
 
 document.addEventListener("click", e => {
+  if (e.target?.dataset?.backdropClose === "true") {
+    closeModal();
+    return;
+  }
   const target = e.target.closest("[data-action]");
   if (!target) return;
   e.preventDefault();
   handleAction(target.dataset.action, target);
 });
+document.addEventListener("ended", e => {
+  const player = e.target.closest?.("[data-ads-player]");
+  if (!player) return;
+  const ids = String(player.dataset.ids || "").split(",").filter(Boolean);
+  if (ids.length <= 1) {
+    player.currentTime = 0;
+    player.play().catch(() => {});
+    return;
+  }
+  const nextIndex = (Number(player.dataset.index || 0) + 1) % ids.length;
+  player.dataset.index = String(nextIndex);
+  player.src = `/api/media/file/video/${encodeURIComponent(ids[nextIndex])}`;
+  player.play().catch(() => {});
+}, true);
+
 
 document.addEventListener("input", e => {
   const target = e.target.closest("[data-action='search']");
@@ -1019,6 +1143,17 @@ document.addEventListener("submit", async e => {
         <div class="contact-row"><b>Password:</b> ${escapeHtml(data.password)} <button class="btn btn-small" data-action="copy" data-copy="${escapeHtml(data.password)}">Copy</button></div>
         <p class="subtitle">Gửi thông tin này cho khách. Sau khi customer được tạo, tài khoản mới đăng nhập được.</p>
       </div>`, `<button class="btn btn-primary" data-action="close-modal">${t("Close")}</button>`);
+      render();
+    }
+    if (form.dataset.form === "admin-edit-customer-login") {
+      const customerId = data.customerId;
+      const payload = await apiJson(`/api/admin/customers/${encodeURIComponent(customerId)}/login`, {
+        method: "PUT",
+        body: JSON.stringify(data)
+      });
+      state.data = mergeData(payload.data);
+      toast("success", "Customer login updated", data.username);
+      closeModal();
       render();
     }
     if (form.dataset.form === "admin-create-device") {
