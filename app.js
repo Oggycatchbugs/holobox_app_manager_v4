@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.6-phase2-clean-output-power-icon";
+const APP_VERSION = "13.1.7-phase2-power-icon-top-white";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -729,10 +729,12 @@ function renderHoloboxScreenPreview(device) {
   const powerTitle = isOff ? "Bật HoloBox" : "Tắt HoloBox";
   return `<div class="holobox-preview-card ${isAds && !isOff ? "ads-output-card" : ""}">
     <div class="screen-output-area">
-      <div class="preview-screen ${isOff ? "off-mode" : isAds ? "ads-mode" : "assistant-mode"}">
+      <div class="screen-power-bar">
         <button class="screen-power-icon ${isOff ? "is-off" : "is-on"}" data-action="toggle-customer-device-power" data-id="${device?.id || ""}" title="${powerTitle}" aria-label="${powerTitle}">
           ${icon("power")}
         </button>
+      </div>
+      <div class="preview-screen ${isOff ? "off-mode" : isAds ? "ads-mode" : "assistant-mode"}">
         ${isOff
           ? `<div class="preview-main turned-off-text">HoloBox turned off</div>`
           : isAds
