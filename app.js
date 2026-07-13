@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.3-phase2-modal-mode-info-delete-fix";
+const APP_VERSION = "13.1.4-phase2-customer-actions-layout-add-device";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -464,15 +464,20 @@ function renderAdminCustomers() {
         ${state.data.customers.filter(c => matchesSearch(c.name + c.email + c.phone)).map(c => {
           const user = state.data.users.find(u => u.customerId === c.id && normalizeName(u.role) === "customer");
           const deviceCount = state.data.devices.filter(d => d.customerId === c.id).length;
-          return `<div class="table-row customer-grid">
-            <div><b>${escapeHtml(c.name)}</b><div class="sub">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "")}</div></div>
+          return `<div class="table-row customer-grid customer-row">
+            <div class="customer-main-cell">
+              <button class="customer-name-link" data-action="open-customer" data-id="${c.id}">${escapeHtml(c.name)}</button>
+              <div class="sub">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "")}</div>
+            </div>
             <div><b>${escapeHtml(user?.username || "—")}</b><div class="sub">${user?.active === false ? "Inactive" : "Active"}</div></div>
-            <div>${deviceCount}</div>
+            <div class="device-count-cell">${deviceCount}</div>
             <div>${statusBadge(c.status || "active")}</div>
-            <div class="actions">
+            <div class="actions customer-actions">
               <button class="btn btn-small btn-primary" data-action="open-customer" data-id="${c.id}">${t("Open")}</button>
+              <button class="btn btn-small" data-action="open-customer" data-id="${c.id}">${icon("plus")} Thêm HoloBox</button>
               ${user ? `<button class="btn btn-small" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Info</button>` : ""}
-              <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button><button class="btn btn-small btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
+              <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
+              <button class="btn btn-small btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
             </div>
           </div>`;
         }).join("") || `<div class="empty">${t("No data")}</div>`}
@@ -515,8 +520,8 @@ function renderAdminCustomerDashboard(customerId) {
     </div>
 
     <div class="two-col">
-      <form class="card form-card" data-form="admin-create-device">
-        <h2>${icon("plus")} Thêm HoloBox cho khách</h2>
+      <form class="card form-card add-holobox-card" data-form="admin-create-device">
+        <h2>${icon("plus")} Thêm HoloBox cho khách</h2><p class="subtitle">Điền mã thiết bị để gán HoloBox mới cho customer này.</p>
         <input type="hidden" name="customerId" value="${escapeHtml(c.id)}">
         <label>Device name<input class="input" name="name" required placeholder="HoloBox Sảnh Chính"></label>
         <label>${t("Device code")}<input class="input" name="deviceCode" required placeholder="HOLOBOX_01"></label>
