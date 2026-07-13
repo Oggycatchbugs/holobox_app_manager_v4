@@ -323,6 +323,22 @@ function ensureBootstrap(data) {
     }
   }
 
+
+  // Repair customer accounts that were broken by older builds saving sanitized users
+  // back to Supabase without passwordHash. Their temporary password becomes 123456.
+  for (const user of current.users) {
+    if (normalizeName(user.role) === "customer") {
+      const hasValidHash = typeof user.passwordHash === "string" && user.passwordHash.startsWith("scrypt$");
+      if (!hasValidHash || user.active === false) {
+        user.passwordHash = hashPassword("123456");
+        user.active = true;
+        user.firstLoginDone = user.firstLoginDone ?? false;
+        user.repairedAt = new Date().toISOString();
+        changed = true;
+      }
+    }
+  }
+
   return { data: current, changed };
 }
 async function getAuthUser(req) {
@@ -719,6 +735,43 @@ function safeStorageName(name) {
   return `${base}${ext || ""}`;
 }
 
+
+function mergeAdminStatePreservingSecrets(currentFullState, incomingAdminState) {
+  const current = mergeState(currentFullState);
+  const incomingRaw = incomingAdminState && typeof incomingAdminState === "object" ? incomingAdminState : {};
+  const next = mergeState(incomingRaw);
+
+  // Frontend only receives sanitized users, so it cannot send passwordHash back.
+  // Preserve passwordHash and other secret fields from the database during admin PUT /api/state.
+  const oldUsers = Array.isArray(current.users) ? current.users : [];
+  const incomingUsers = Array.isArray(incomingRaw.users) ? incomingRaw.users : oldUsers.map(sanitizeUser);
+  next.users = incomingUsers.map(user => {
+    const old = oldUsers.find(existing =>
+      (user.id && existing.id === user.id) ||
+      (user.username && normalizeName(existing.username) === normalizeName(user.username))
+    );
+    return {
+      ...(old || {}),
+      ...user,
+      passwordHash: (typeof user.passwordHash === "string" && user.passwordHash.startsWith("scrypt$"))
+        ? user.passwordHash
+        : old?.passwordHash
+    };
+  });
+
+  // Keep database users that are not represented in the incoming sanitized frontend state.
+  for (const old of oldUsers) {
+    if (!next.users.some(user =>
+      (user.id && user.id === old.id) ||
+      (user.username && normalizeName(user.username) === normalizeName(old.username))
+    )) {
+      next.users.push(old);
+    }
+  }
+
+  return next;
+}
+
 async function handleGetState(req, res) {
   const auth = await requireUser(req, res);
   if (!auth) return;
@@ -742,7 +795,7 @@ async function handlePutState(req, res) {
   const row = await getStateRow();
   const current = mergeState(row.data);
   const next = auth.user.role === "admin"
-    ? mergeState(body.data || {})
+    ? mergeAdminStatePreservingSecrets(current, body.data || {})
     : mergeCustomerScopedState(current, body.data || {}, auth.user);
   const boot = ensureBootstrap(next);
   const saved = await saveState(boot.data);
@@ -1092,7 +1145,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.0-phase2-customer-admin-refactor",
+        version: "13.1.1-phase2-customer-login-secret-preserve",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
