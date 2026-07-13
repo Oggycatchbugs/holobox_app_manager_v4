@@ -1,13 +1,13 @@
-const APP_VERSION = "13.0.0-phase1-role-portal";
+const APP_VERSION = "13.1.0-phase2-customer-admin-refactor";
 const APP_FEATURES = [
-  "role-auth-login",
-  "admin-portal",
-  "customer-portal",
-  "customer-home-screen-split",
-  "customer-video-audio-tabs",
-  "language-switcher-vi-en",
-  "maintenance-contact-modal",
-  "device-api-ready"
+  "phase2-customer-upload-polish",
+  "one-admin-only-bootstrap",
+  "manual-customer-accounts",
+  "customer-dashboard-in-admin",
+  "manual-assistant-template",
+  "admin-customers-only-device-management",
+  "svg-flag-language-switcher",
+  "v3-style-buttons-and-copy"
 ];
 
 const STORAGE_KEY = "holobox_manager_phase1_cache";
@@ -21,6 +21,7 @@ let state = {
   search: "",
   mediaTab: "video",
   viewingCustomerId: "",
+  selectedCustomerId: "",
   data: defaultData(),
 };
 
@@ -74,6 +75,12 @@ const dict = {
     "Delete": "Xóa",
     "Preview": "Xem thử",
     "Role": "Quyền",
+    "Open": "Mở",
+    "Back": "Quay lại",
+    "Copy": "Sao chép",
+    "Create assistant template": "Tạo mẫu lễ tân",
+    "Title": "Tiêu đề",
+    "Content": "Nội dung",
     "Customer": "Khách hàng",
     "Device code": "Mã thiết bị",
     "Mode": "Chế độ",
@@ -273,8 +280,6 @@ async function confirmModal(title, body) {
 const adminNav = [
   ["dashboard", "Dashboard", "dashboard"],
   ["customers", "Customers", "users"],
-  ["devices", "Devices", "monitor"],
-  ["media", "Media", "media"],
   ["assistant", "Assistant", "assistant"],
   ["logs", "Logs", "logs"],
   ["maintenance", "Maintenance", "wrench"],
@@ -349,12 +354,19 @@ function renderLogin() {
     </section>
   </div>`;
 }
+function flagSvg(lang) {
+  if (lang === "vi") {
+    return `<svg viewBox="0 0 30 20" class="flag-svg" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#da251d"/><polygon fill="#ff0" points="15,3.2 16.8,8.1 22,8.1 17.7,11.1 19.4,16 15,13 10.6,16 12.3,11.1 8,8.1 13.2,8.1"/></svg>`;
+  }
+  return `<svg viewBox="0 0 30 20" class="flag-svg" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#fff"/><g fill="#b22234"><rect y="0" width="30" height="1.54"/><rect y="3.08" width="30" height="1.54"/><rect y="6.16" width="30" height="1.54"/><rect y="9.24" width="30" height="1.54"/><rect y="12.32" width="30" height="1.54"/><rect y="15.4" width="30" height="1.54"/><rect y="18.48" width="30" height="1.52"/></g><rect width="12.6" height="10.8" rx="1" fill="#3c3b6e"/><g fill="#fff"><circle cx="2" cy="2" r=".55"/><circle cx="5" cy="2" r=".55"/><circle cx="8" cy="2" r=".55"/><circle cx="11" cy="2" r=".55"/><circle cx="3.5" cy="4" r=".55"/><circle cx="6.5" cy="4" r=".55"/><circle cx="9.5" cy="4" r=".55"/><circle cx="2" cy="6" r=".55"/><circle cx="5" cy="6" r=".55"/><circle cx="8" cy="6" r=".55"/><circle cx="11" cy="6" r=".55"/><circle cx="3.5" cy="8" r=".55"/><circle cx="6.5" cy="8" r=".55"/><circle cx="9.5" cy="8" r=".55"/></g></svg>`;
+}
 function renderLanguageTools() {
   return `<div class="lang-switch">
-    <button class="flag-btn ${state.language === "vi" ? "active" : ""}" data-action="change-language" data-lang="vi" title="Tiếng Việt">🇻🇳</button>
-    <button class="flag-btn ${state.language === "en" ? "active" : ""}" data-action="change-language" data-lang="en" title="English">🇺🇸</button>
+    <button class="flag-btn ${state.language === "vi" ? "active" : ""}" data-action="change-language" data-lang="vi" title="Tiếng Việt">${flagSvg("vi")}</button>
+    <button class="flag-btn ${state.language === "en" ? "active" : ""}" data-action="change-language" data-lang="en" title="English">${flagSvg("en")}</button>
   </div>`;
 }
+
 function renderTopbar(title, subtitle = "") {
   return `<header class="topbar">
     <div>
@@ -393,8 +405,6 @@ function renderAdminShell() {
 function renderAdminView() {
   switch (state.view) {
     case "customers": return renderAdminCustomers();
-    case "devices": return renderAdminDevices();
-    case "media": return renderAdminMedia();
     case "assistant": return renderAdminAssistant();
     case "logs": return renderAdminLogs();
     case "maintenance": return renderAdminMaintenance();
@@ -402,6 +412,7 @@ function renderAdminView() {
     default: return renderAdminDashboard();
   }
 }
+
 function renderAdminDashboard() {
   const online = state.data.devices.filter(d => computedDeviceStatus(d) === "Online").length;
   const offline = state.data.devices.length - online;
@@ -421,6 +432,9 @@ function statCard(title, value, caption, ico) {
   return `<div class="card stat-card"><div class="icon-bubble">${icon(ico)}</div><div><div class="stat-title">${t(title)}</div><div class="stat-number">${escapeHtml(value)}</div><div class="stat-caption">${escapeHtml(caption)}</div></div></div>`;
 }
 function renderAdminCustomers() {
+  const selectedId = state.selectedCustomerId;
+  if (selectedId) return renderAdminCustomerDashboard(selectedId);
+
   return `<div class="two-col">
     <form class="card form-card" data-form="admin-create-customer">
       <h2>${icon("plus")} ${t("Create customer")}</h2>
@@ -428,25 +442,97 @@ function renderAdminCustomers() {
       <label>Contact name<input class="input" name="contactName" placeholder="Anh A"></label>
       <label>Phone<input class="input" name="phone" placeholder="090..."></label>
       <label>Email<input class="input" name="email" type="email" placeholder="customer@example.com"></label>
+      <div class="divider"></div>
       <label>Login username<input class="input" name="username" required placeholder="abc_customer"></label>
       <label>Temporary password<input class="input" name="password" required value="123456"></label>
-      <button class="action-btn primary" type="submit">${t("Create customer")}</button>
+      <button class="btn btn-primary wide" type="submit">${t("Create customer")}</button>
+      <p class="subtitle">Ban đầu hệ thống chỉ có admin. Customer chỉ đăng nhập được sau khi tạo ở đây.</p>
     </form>
+
     <section class="panel">
-      <div class="panel-toolbar"><h2>${t("Customers")}</h2><div class="search-wrap">${icon("search")}<input class="search" data-action="search" placeholder="Search..." value="${escapeHtml(state.search)}"></div></div>
+      <div class="panel-toolbar">
+        <h2>${t("Customers")}</h2>
+        <div class="search-wrap">${icon("search")}<input class="search" data-action="search" placeholder="Search..." value="${escapeHtml(state.search)}"></div>
+      </div>
       <div class="table">
-        <div class="table-head customer-grid"><div>Customer</div><div>Contact</div><div>Devices</div><div>Status</div><div>Actions</div></div>
-        ${state.data.customers.filter(c => matchesSearch(c.name + c.email + c.phone)).map(c => `<div class="table-row customer-grid">
-          <div><b>${escapeHtml(c.name)}</b><div class="sub">${escapeHtml(c.email || "—")}</div></div>
-          <div>${escapeHtml(c.contactName || "—")}<div class="sub">${escapeHtml(c.phone || "")}</div></div>
-          <div>${state.data.devices.filter(d => d.customerId === c.id).length}</div>
-          <div>${statusBadge(c.status || "active")}</div>
-          <div class="actions"><button class="mini-btn" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button></div>
-        </div>`).join("") || `<div class="empty">${t("No data")}</div>`}
+        <div class="table-head customer-grid"><div>Customer</div><div>Login</div><div>Devices</div><div>Status</div><div>Actions</div></div>
+        ${state.data.customers.filter(c => matchesSearch(c.name + c.email + c.phone)).map(c => {
+          const user = state.data.users.find(u => u.customerId === c.id && normalizeName(u.role) === "customer");
+          const deviceCount = state.data.devices.filter(d => d.customerId === c.id).length;
+          return `<div class="table-row customer-grid">
+            <div><b>${escapeHtml(c.name)}</b><div class="sub">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "")}</div></div>
+            <div><b>${escapeHtml(user?.username || "—")}</b><div class="sub">${user?.active === false ? "Inactive" : "Active"}</div></div>
+            <div>${deviceCount}</div>
+            <div>${statusBadge(c.status || "active")}</div>
+            <div class="actions">
+              <button class="btn btn-small btn-primary" data-action="open-customer" data-id="${c.id}">${t("Open")}</button>
+              ${user ? `<button class="btn btn-small" data-action="copy" data-copy="${escapeHtml(user.username)}">${t("Copy")} user</button>` : ""}
+              <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
+            </div>
+          </div>`;
+        }).join("") || `<div class="empty">${t("No data")}</div>`}
       </div>
     </section>
   </div>`;
 }
+
+function renderAdminCustomerDashboard(customerId) {
+  const c = state.data.customers.find(x => x.id === customerId);
+  if (!c) {
+    state.selectedCustomerId = "";
+    return renderAdminCustomers();
+  }
+  const devices = state.data.devices.filter(d => d.customerId === customerId);
+  const online = devices.filter(d => computedDeviceStatus(d) === "Online").length;
+  const offline = devices.length - online;
+  const videos = state.data.videos.filter(v => v.customerId === customerId);
+  const audios = state.data.audio.filter(a => a.customerId === customerId);
+  const user = state.data.users.find(u => u.customerId === customerId && normalizeName(u.role) === "customer");
+
+  return `<div class="customer-dashboard">
+    <div class="panel-toolbar">
+      <div>
+        <button class="btn btn-small" data-action="customer-back-list">${icon("back")} ${t("Back")}</button>
+        <h2 style="margin-top:12px">${escapeHtml(c.name)}</h2>
+        <p class="subtitle">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "—")}</p>
+      </div>
+      <div class="actions">
+        ${user ? `<button class="btn" data-action="copy" data-copy="${escapeHtml(user.username)}">Copy username</button>` : ""}
+        <button class="btn btn-primary" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      ${statCard("Devices", devices.length, `${online} online · ${offline} offline`, "monitor")}
+      ${statCard("Video", videos.length, "Video quảng cáo", "video")}
+      ${statCard("Audio", audios.length, "Audio lễ tân", "audio")}
+      ${statCard("Status", c.status || "active", user ? `Login: ${user.username}` : "No login user", "users")}
+    </div>
+
+    <div class="two-col">
+      <form class="card form-card" data-form="admin-create-device">
+        <h2>${icon("plus")} Thêm HoloBox cho khách</h2>
+        <input type="hidden" name="customerId" value="${escapeHtml(c.id)}">
+        <label>Device name<input class="input" name="name" required placeholder="HoloBox Sảnh Chính"></label>
+        <label>${t("Device code")}<input class="input" name="deviceCode" required placeholder="HOLOBOX_01"></label>
+        <label>Stream URL<input class="input" name="streamUrl" placeholder="http://.../video_feed"></label>
+        <label>${t("Mode")}<select name="runtimeMode"><option value="ASSISTANT">Assistant Mode</option><option value="JUST_ADS">Just Ads Mode</option></select></label>
+        <button class="btn btn-primary wide" type="submit">${t("Create device")}</button>
+      </form>
+
+      <section class="panel">
+        <div class="panel-toolbar"><h2>Device dashboard</h2><button class="btn btn-small" data-action="refresh">${icon("refresh")} Refresh</button></div>
+        ${renderDeviceTable(devices, false)}
+      </section>
+    </div>
+
+    <div class="two-col equal">
+      <section class="panel"><h2>Video của khách</h2><div class="media-grid">${videos.map(v => renderMediaCard(v, "video", true)).join("") || `<div class="empty">${t("No data")}</div>`}</div></section>
+      <section class="panel"><h2>Audio của khách</h2><div class="media-grid">${audios.map(a => renderMediaCard(a, "audio", true)).join("") || `<div class="empty">${t("No data")}</div>`}</div></section>
+    </div>
+  </div>`;
+}
+
 function renderAdminDevices() {
   return `<div class="two-col">
     <form class="card form-card" data-form="admin-create-device">
@@ -498,10 +584,32 @@ function renderPlaylistOverview() {
   </div>`;
 }
 function renderAdminAssistant() {
-  return `<section class="panel"><div class="panel-toolbar"><h2>${t("Assistant")}</h2><button class="mini-btn" data-action="seed-assistant">${icon("plus")} Create template</button></div>
-    <div class="intent-grid">${getAssistantScriptsForAdmin().map(renderIntentCard).join("") || `<div class="empty">No assistant scripts yet.</div>`}</div>
-  </section>`;
+  return `<div class="two-col">
+    <form class="card form-card" data-form="admin-create-assistant-template">
+      <h2>${icon("plus")} ${t("Create assistant template")}</h2>
+      <label>${t("Customer")}<select name="customerId" required>${state.data.customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("")}</select></label>
+      <label>${t("Title")}<input class="input" name="title" required placeholder="Chào khách"></label>
+      <label>Intent<select name="intent">
+        <option value="greeting">Chào khách</option>
+        <option value="company_info">Giới thiệu công ty</option>
+        <option value="product_info">Giới thiệu sản phẩm</option>
+        <option value="price">Báo giá</option>
+        <option value="direction">Chỉ đường</option>
+        <option value="fallback">Không hiểu câu hỏi</option>
+        <option value="goodbye">Tạm biệt</option>
+      </select></label>
+      <label>${t("Content")}<textarea name="text" required rows="7" placeholder="Nhập nội dung lễ tân sẽ trả lời..."></textarea></label>
+      <label>Audio<select name="audioId"><option value="">Chưa gắn audio</option>${state.data.audio.map(a => `<option value="${a.id}">${escapeHtml(customerName(a.customerId))} · ${escapeHtml(a.name)}</option>`).join("")}</select></label>
+      <button class="btn btn-primary wide" type="submit">${t("Save")}</button>
+    </form>
+
+    <section class="panel">
+      <div class="panel-toolbar"><h2>${t("Assistant")}</h2><span class="sub">${state.data.assistantScripts.length} templates</span></div>
+      <div class="intent-grid">${getAssistantScriptsForAdmin().map(renderIntentCard).join("") || `<div class="empty">Chưa có template. Hãy tạo thủ công tiêu đề và nội dung.</div>`}</div>
+    </section>
+  </div>`;
 }
+
 function getAssistantScriptsForAdmin() {
   return state.data.assistantScripts || [];
 }
@@ -588,28 +696,48 @@ function renderMiniMediaList(list, kind) {
 function renderCustomerVideo() {
   const videos = customerVideos();
   return `<div class="customer-two-col">
-    <section class="card upload-card">
+    <section class="card upload-card v3-upload">
       <h2>${icon("upload")} ${t("Add video")}</h2>
-      <p class="subtitle">Upload quảng cáo, sau đó có thể tự thêm vào playlist.</p>
-      <input class="input" type="file" accept="video/*" data-upload-kind="video" multiple>
+      <p class="subtitle">Thêm video quảng cáo. File sẽ lưu vào bucket của customer hiện tại.</p>
+      <label class="drop-zone v3-drop">
+        <input class="hidden-file" type="file" accept="video/*" data-upload-kind="video" multiple>
+        <div class="drop-icon">${icon("upload")}</div>
+        <strong>Chọn hoặc kéo video vào đây</strong>
+        <span>MP4, WebM, MOV · tối đa theo cấu hình bucket</span>
+        <span class="btn btn-primary">Chọn file video</span>
+      </label>
       <label class="check-row"><input type="checkbox" data-auto-playlist checked> Tự thêm vào playlist quảng cáo</label>
-      <button class="action-btn primary" data-action="auto-playlist">${t("Auto playlist")}</button>
+      <button class="btn wide" data-action="auto-playlist">${t("Auto playlist")}</button>
     </section>
-    <section class="panel"><div class="panel-toolbar"><h2>${t("Video")}</h2><span class="sub">${videos.length} files</span></div><div class="media-grid">${videos.map(v => renderMediaCard(v, "video")).join("") || `<div class="empty">${t("No data")}</div>`}</div></section>
+    <section class="panel">
+      <div class="panel-toolbar"><h2>${t("Video")}</h2><span class="sub">${videos.length} files</span></div>
+      <div class="media-grid">${videos.map(v => renderMediaCard(v, "video")).join("") || `<div class="empty">${t("No data")}</div>`}</div>
+    </section>
   </div>`;
 }
+
 function renderCustomerAudio() {
   const audios = customerAudios();
   return `<div class="customer-two-col">
-    <section class="card upload-card">
+    <section class="card upload-card v3-upload">
       <h2>${icon("upload")} ${t("Add audio")}</h2>
       <p class="subtitle">Audio dùng cho lễ tân ảo tương tác với khách.</p>
       <label>Vai trò audio<select data-audio-role><option value="greeting">Chào khách</option><option value="company_info">Giới thiệu công ty</option><option value="product_info">Giới thiệu sản phẩm</option><option value="price">Báo giá</option><option value="direction">Chỉ đường</option><option value="fallback">Không hiểu câu hỏi</option><option value="goodbye">Tạm biệt</option></select></label>
-      <input class="input" type="file" accept="audio/*" data-upload-kind="audio" multiple>
+      <label class="drop-zone v3-drop">
+        <input class="hidden-file" type="file" accept="audio/*" data-upload-kind="audio" multiple>
+        <div class="drop-icon">${icon("audio")}</div>
+        <strong>Chọn hoặc kéo audio vào đây</strong>
+        <span>MP3, WAV, OGG</span>
+        <span class="btn btn-primary">Chọn file audio</span>
+      </label>
     </section>
-    <section class="panel"><div class="panel-toolbar"><h2>${t("Receptionist audio")}</h2><span class="sub">${audios.length} files</span></div><div class="media-grid">${audios.map(a => renderMediaCard(a, "audio")).join("") || `<div class="empty">${t("No data")}</div>`}</div></section>
+    <section class="panel">
+      <div class="panel-toolbar"><h2>${t("Receptionist audio")}</h2><span class="sub">${audios.length} files</span></div>
+      <div class="media-grid">${audios.map(a => renderMediaCard(a, "audio")).join("") || `<div class="empty">${t("No data")}</div>`}</div>
+    </section>
   </div>`;
 }
+
 function renderMediaCard(item, kind, admin = false) {
   const customer = admin ? `<div class="sub">${escapeHtml(customerName(item.customerId))}</div>` : "";
   return `<div class="media-card">
@@ -689,6 +817,7 @@ const actionHandlers = {
   "nav": async target => {
     state.view = target.dataset.view || (state.portal === "admin" ? "dashboard" : "customerHome");
     state.search = "";
+    state.selectedCustomerId = "";
     render();
   },
   "change-language": async target => {
@@ -717,6 +846,30 @@ const actionHandlers = {
     state.view = "dashboard";
     state.viewingCustomerId = "";
     await refreshData();
+  },
+  "open-customer": async target => {
+    state.selectedCustomerId = target.dataset.id || "";
+    render();
+  },
+  "customer-back-list": async () => {
+    state.selectedCustomerId = "";
+    render();
+  },
+  "copy": async target => {
+    const value = target.dataset.copy || "";
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      toast("success", "Copied", value);
+    } catch {
+      const temp = document.createElement("textarea");
+      temp.value = value;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      temp.remove();
+      toast("success", "Copied", value);
+    }
   },
   "view-as-customer": async target => {
     state.viewingCustomerId = target.dataset.id;
@@ -790,23 +943,7 @@ const actionHandlers = {
     const payload = await apiJson(`/api/stream/probe?url=${encodeURIComponent(url)}`);
     toast(payload.reachable ? "success" : "error", payload.reachable ? "Stream reachable" : "Stream failed", payload.reason || "");
   },
-  "seed-assistant": async () => {
-    const cid = state.data.customers[0]?.id;
-    if (!cid) return toast("error", "No customer", "Create a customer first.");
-    const templates = [
-      ["greeting", "Chào khách", "Xin chào anh/chị, em là lễ tân ảo. Em có thể hỗ trợ thông tin sản phẩm, chỉ đường hoặc liên hệ nhân viên."],
-      ["company_info", "Giới thiệu công ty", "Chúng tôi cung cấp giải pháp HoloBox, kiosk tương tác và tự động hóa cho doanh nghiệp."],
-      ["fallback", "Không hiểu câu hỏi", "Xin lỗi, em chưa hiểu câu hỏi này. Anh/chị vui lòng liên hệ nhân viên để được hỗ trợ."]
-    ];
-    templates.forEach(([intent, title, text]) => {
-      if (!state.data.assistantScripts.some(s => s.customerId === cid && s.intent === intent)) {
-        state.data.assistantScripts.push({ id: `as_${uid()}`, customerId: cid, intent, title, text, audioId: "", enabled: true, language: "vi" });
-      }
-    });
-    await saveData();
-    toast("success", "Assistant template created");
-    render();
-  }
+  "seed-assistant": async () => {},
 };
 
 async function handleAction(action, target) {
@@ -860,12 +997,34 @@ document.addEventListener("submit", async e => {
       const payload = await apiJson("/api/admin/customers", { method: "POST", body: JSON.stringify(data) });
       state.data = mergeData(payload.data);
       toast("success", "Customer created", data.name);
+      modal("Customer login created", `<div class="contact-card">
+        <div class="contact-row"><b>Username:</b> ${escapeHtml(data.username)} <button class="btn btn-small" data-action="copy" data-copy="${escapeHtml(data.username)}">Copy</button></div>
+        <div class="contact-row"><b>Password:</b> ${escapeHtml(data.password)} <button class="btn btn-small" data-action="copy" data-copy="${escapeHtml(data.password)}">Copy</button></div>
+        <p class="subtitle">Gửi thông tin này cho khách. Sau khi customer được tạo, tài khoản mới đăng nhập được.</p>
+      </div>`, `<button class="btn btn-primary" data-action="close-modal">${t("Close")}</button>`);
       render();
     }
     if (form.dataset.form === "admin-create-device") {
       const payload = await apiJson("/api/admin/devices", { method: "POST", body: JSON.stringify(data) });
       state.data = mergeData(payload.data);
       toast("success", "Device created", data.deviceCode);
+      render();
+    }
+    if (form.dataset.form === "admin-create-assistant-template") {
+      state.data.assistantScripts.unshift({
+        id: `as_${uid()}`,
+        customerId: data.customerId,
+        intent: data.intent || "manual",
+        title: data.title,
+        text: data.text,
+        audioId: data.audioId || "",
+        enabled: true,
+        language: state.language || "vi",
+        createdAt: Date.now()
+      });
+      await saveData();
+      toast("success", "Assistant template saved", data.title);
+      form.reset();
       render();
     }
     if (form.dataset.form === "admin-settings") {

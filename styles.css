@@ -649,3 +649,61 @@ label { display: grid; gap: 8px; font-weight: 800; color: var(--ink); }
   .login-shell { padding: 20px; }
   .login-tools { position: static; margin-bottom: 14px; }
 }
+
+
+/* === Phase 2 customer/admin refactor === */
+.flag-svg { width: 30px; height: 20px; display: block; border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+.flag-btn { min-width: 46px; height: 38px; padding: 0; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid rgba(28, 37, 55, .12);
+  border-radius: 12px;
+  min-height: 40px;
+  padding: 9px 13px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 1px 0 rgba(12, 27, 48, .05);
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(19,33,58,.09); }
+.btn-primary { border-color: var(--brand-red); background: linear-gradient(135deg, var(--brand-red), var(--brand)); color: #fff; }
+.btn-danger { border-color: var(--danger); background: var(--danger); color: #fff; }
+.btn-small { min-height: 33px; padding: 6px 9px; border-radius: 10px; font-size: 12px; }
+.btn.wide, .wide { width: 100%; }
+.divider { height: 1px; background: rgba(255,107,74,.13); margin: 2px 0; }
+.customer-dashboard { display: grid; gap: 18px; }
+.v3-upload { gap: 16px; }
+.drop-zone.v3-drop {
+  min-height: 230px;
+  border: 1.5px dashed rgba(152,12,10,.28);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,189,89,.18), transparent 28%),
+    #fff9f5;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.drop-zone.v3-drop:hover { border-color: var(--brand-red); box-shadow: 0 18px 40px rgba(152,12,10,.08); transform: translateY(-1px); }
+.drop-zone.v3-drop strong { font-size: 18px; }
+.drop-zone.v3-drop span { color: var(--muted); }
+.drop-zone.v3-drop .btn { color: #fff; margin-top: 6px; }
+.hidden-file { display: none !important; }
+.drop-icon {
+  width: 72px; height: 72px; border-radius: 24px;
+  display: grid; place-items: center; font-size: 30px;
+  background: linear-gradient(135deg, #15100d, #9a1d14);
+  color: #ffbd59;
+}
+.contact-row .btn { margin-left: 10px; }
+.table-row .btn, .actions .btn { white-space: nowrap; }
+@media (max-width: 900px) {
+  .contact-row .btn { margin-left: 0; margin-top: 8px; }
+}

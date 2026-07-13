@@ -4,6 +4,14 @@ const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
 
+function cleanEnvValue(value) {
+  return String(value || "")
+    .replace(/[\r\n\t]/g, "")
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
+}
+
+
 let createClient = null;
 try {
   ({ createClient } = require("@supabase/supabase-js"));
@@ -13,15 +21,15 @@ try {
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
-const STATE_TABLE = process.env.SUPABASE_STATE_TABLE || "holobox_state";
-const STATE_ID_ENV = process.env.SUPABASE_STATE_ID || "";
-const BUCKET = process.env.SUPABASE_BUCKET || "holobox-media";
+const SUPABASE_URL = cleanEnvValue(process.env.SUPABASE_URL);
+const SUPABASE_SERVICE_ROLE_KEY = cleanEnvValue(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_KEY || "");
+const STATE_TABLE = cleanEnvValue(process.env.SUPABASE_STATE_TABLE) || "holobox_state";
+const STATE_ID_ENV = cleanEnvValue(process.env.SUPABASE_STATE_ID);
+const BUCKET = cleanEnvValue(process.env.SUPABASE_BUCKET) || "holobox-media";
 const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 250 * 1024 * 1024);
-const SESSION_SECRET = process.env.SESSION_SECRET || "dev-change-this-holobox-session-secret";
-const DEFAULT_ADMIN_USERNAME = process.env.DEFAULT_ADMIN_USERNAME || "admin";
-const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
+const SESSION_SECRET = cleanEnvValue(process.env.SESSION_SECRET) || "dev-change-this-holobox-session-secret";
+const DEFAULT_ADMIN_USERNAME = cleanEnvValue(process.env.DEFAULT_ADMIN_USERNAME) || "admin";
+const DEFAULT_ADMIN_PASSWORD = cleanEnvValue(process.env.DEFAULT_ADMIN_PASSWORD) || "admin123";
 const COOKIE_NAME = "hb_session";
 
 let resolvedStateId = STATE_ID_ENV || null;
@@ -238,60 +246,79 @@ function ensureBootstrap(data) {
   const current = mergeState(data);
   let changed = false;
   if (!Array.isArray(current.users)) current.users = [];
+  if (!Array.isArray(current.customers)) current.customers = [];
+  if (!Array.isArray(current.devices)) current.devices = [];
 
-  // v13.0.1: create login-capable fallback admin accounts.
-  // Old Supabase states can contain an admin user without a valid passwordHash,
-  // which blocks the original admin/admin123 bootstrap. These fallback accounts
-  // keep the system recoverable without deleting existing state.
-  const bootstrapAdmins = [
-    {
-      username: DEFAULT_ADMIN_USERNAME,
-      password: DEFAULT_ADMIN_PASSWORD,
-      name: "TLC Admin"
-    },
-    {
-      username: "tlc_admin",
-      password: "TLC@123456",
-      name: "TLC Emergency Admin"
-    },
-    {
-      username: "support_admin",
-      password: "Support@123456",
-      name: "TLC Support Admin"
-    }
-  ];
+  // v13.1.0 / Phase 2:
+  // Initial system has only one admin account.
+  // Customer accounts are created manually from Admin > Customers.
+  const adminUsername = DEFAULT_ADMIN_USERNAME || "admin";
+  const adminPassword = DEFAULT_ADMIN_PASSWORD || "admin123";
 
-  for (const account of bootstrapAdmins) {
-    const existing = current.users.find(u => normalizeName(u.username) === normalizeName(account.username));
-    if (!existing) {
-      current.users.unshift({
-        id: `user_admin_${uid()}`,
-        username: account.username,
-        name: account.name,
-        role: "admin",
-        customerId: null,
-        passwordHash: hashPassword(account.password),
-        active: true,
-        language: "vi",
-        firstLoginDone: true,
-        createdAt: Date.now(),
-        bootstrapAccount: true
-      });
+  // Remove previous demo/emergency bootstrap accounts from older test builds.
+  const bootstrapUsernamesToRemove = ["tlc_admin", "support_admin", "customer_01", "customer_02", "customer_03"];
+  const beforeUsers = current.users.length;
+  current.users = current.users.filter(u => !bootstrapUsernamesToRemove.includes(normalizeName(u.username)));
+  if (current.users.length !== beforeUsers) changed = true;
+
+  const beforeCustomers = current.customers.length;
+  current.customers = current.customers.filter(c => {
+    const key = normalizeName(c.demoKey || c.id || c.name);
+    return !key.includes("cus_demo_") && !["customer demo 01", "customer demo 02", "customer demo 03"].includes(key);
+  });
+  if (current.customers.length !== beforeCustomers) changed = true;
+
+  const beforeDevices = current.devices.length;
+  current.devices = current.devices.filter(d => {
+    const code = normalizeName(d.deviceCode || d.id || d.name);
+    return !["holobox_cus_01", "holobox_cus_02", "holobox_cus_03"].includes(code) && !normalizeName(d.id).includes("cus_demo_");
+  });
+  if (current.devices.length !== beforeDevices) changed = true;
+
+  let admin = current.users.find(u => normalizeName(u.username) === normalizeName(adminUsername));
+  if (!admin) {
+    admin = {
+      id: `user_admin_${uid()}`,
+      username: adminUsername,
+      name: "TLC Admin",
+      role: "admin",
+      customerId: null,
+      passwordHash: hashPassword(adminPassword),
+      active: true,
+      language: "vi",
+      firstLoginDone: true,
+      createdAt: Date.now(),
+      bootstrapAccount: true
+    };
+    current.users.unshift(admin);
+    changed = true;
+  } else {
+    const hasValidHash = typeof admin.passwordHash === "string" && admin.passwordHash.startsWith("scrypt$");
+    if (
+      normalizeName(admin.role) !== "admin" ||
+      !hasValidHash ||
+      admin.active === false ||
+      admin.bootstrapAccount === true
+    ) {
+      admin.role = "admin";
+      admin.customerId = null;
+      admin.passwordHash = hashPassword(adminPassword);
+      admin.active = true;
+      admin.language = admin.language || "vi";
+      admin.firstLoginDone = true;
+      admin.bootstrapAccount = true;
       changed = true;
-      continue;
     }
+  }
 
-    // If the username exists but is not a usable admin login, repair it.
-    const hasValidHash = typeof existing.passwordHash === "string" && existing.passwordHash.startsWith("scrypt$");
-    const isAdmin = normalizeName(existing.role) === "admin";
-    if (!isAdmin || !hasValidHash || existing.active === false) {
-      existing.role = "admin";
-      existing.customerId = null;
-      existing.passwordHash = hashPassword(account.password);
-      existing.active = true;
-      existing.language = existing.language || "vi";
-      existing.firstLoginDone = true;
-      existing.bootstrapAccount = true;
+  // Disable old bootstrap admin accounts other than the configured admin.
+  for (const user of current.users) {
+    if (
+      normalizeName(user.role) === "admin" &&
+      normalizeName(user.username) !== normalizeName(adminUsername) &&
+      user.bootstrapAccount === true
+    ) {
+      user.active = false;
       changed = true;
     }
   }
@@ -1065,7 +1092,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.0.1-phase1-role-portal-admin-bootstrap",
+        version: "13.1.0-phase2-customer-admin-refactor",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
