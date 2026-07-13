@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.5-phase2-ads-power-info-fix";
+const APP_VERSION = "13.1.6-phase2-clean-output-power-icon";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -162,7 +162,7 @@ function icon(name) {
     home: "⌂", video: "▶", audio: "♪", logout: "↩", users: "👥", monitor: "▣", media: "▤",
     assistant: "◉", logs: "≡", wrench: "⚙", settings: "⚙", plus: "+", upload: "⇧",
     trash: "×", play: "▶", phone: "☎", mail: "✉", lock: "●", dashboard: "◆", back: "←",
-    save: "✓", refresh: "↻", search: "⌕", eye: "👁", eyeOff: "◉", info: "i", edit: "✎"
+    save: "✓", refresh: "↻", search: "⌕", eye: "👁", eyeOff: "◉", info: "i", edit: "✎", power: "⏻"
   };
   return `<span class="ico">${map[name] || "•"}</span>`;
 }
@@ -705,7 +705,7 @@ function renderAdsPlayer() {
   }
   const first = items[0];
   const ids = items.map(v => v.id).join(",");
-  return `<video class="holobox-ads-player" data-ads-player data-ids="${escapeHtml(ids)}" data-index="0" src="/api/media/file/video/${encodeURIComponent(first.id)}" autoplay playsinline controls></video>`;
+  return `<video class="holobox-ads-player" data-ads-player data-ids="${escapeHtml(ids)}" data-index="0" src="/api/media/file/video/${encodeURIComponent(first.id)}" autoplay playsinline></video>`;
 }
 function renderCustomerDeviceModeControls(activeDevice) {
   const devices = customerDevices();
@@ -726,27 +726,31 @@ function renderHoloboxScreenPreview(device) {
   const isAds = device?.runtimeMode === "JUST_ADS";
   const isOff = !device || device.powerCommand === "STOP";
   const modeLabel = isAds ? t("Just Ads Mode") : t("Assistant Mode");
-  const powerLabel = isOff ? "Bật HoloBox" : "Tắt HoloBox";
+  const powerTitle = isOff ? "Bật HoloBox" : "Tắt HoloBox";
   return `<div class="holobox-preview-card ${isAds && !isOff ? "ads-output-card" : ""}">
-    <div class="preview-screen ${isOff ? "off-mode" : isAds ? "ads-mode" : "assistant-mode"}">
-      ${isOff
-        ? `<div class="preview-main turned-off-text">HoloBox turned off</div>`
-        : isAds
-          ? renderAdsPlayer()
-          : `<div class="preview-topline">${escapeHtml(modeLabel)}</div><div class="preview-main">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>
-      <div class="preview-sub">${t("Now playing")}: ${escapeHtml(device?.currentAd || mediaName(device?.currentVideoId, "video") || "—")}</div>`}
+    <div class="screen-output-area">
+      <div class="preview-screen ${isOff ? "off-mode" : isAds ? "ads-mode" : "assistant-mode"}">
+        <button class="screen-power-icon ${isOff ? "is-off" : "is-on"}" data-action="toggle-customer-device-power" data-id="${device?.id || ""}" title="${powerTitle}" aria-label="${powerTitle}">
+          ${icon("power")}
+        </button>
+        ${isOff
+          ? `<div class="preview-main turned-off-text">HoloBox turned off</div>`
+          : isAds
+            ? renderAdsPlayer()
+            : `<div class="preview-main assistant-output">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>`}
+      </div>
     </div>
-    <div class="preview-meta">
-      <div>${t("Status")}: ${isOff ? statusBadge("Offline") : statusBadge(computedDeviceStatus(device))}</div>
-      <div>${t("Mode")}: ${escapeHtml(modeLabel)}</div>
-      <div>${t("Last seen")}: ${lastSeenLabel(device?.lastSeenAt || device?.lastSeen)}</div>
-    </div>
-    <div class="preview-actions single-power-action">
-      <button class="big-power-btn ${isOff ? "" : "danger-power"}" data-action="toggle-customer-device-power" data-id="${device?.id || ""}">${powerLabel}</button>
-    </div>
-    <div class="mode-toggle-panel">
-      <h3>Chuyển chế độ HoloBox</h3>
-      ${renderCustomerDeviceModeControls(device)}
+
+    <div class="screen-control-area">
+      <div class="preview-meta compact-meta">
+        <div>${t("Status")}: ${isOff ? statusBadge("Offline") : statusBadge(computedDeviceStatus(device))}</div>
+        <div>${t("Mode")}: ${escapeHtml(modeLabel)}</div>
+        <div>${t("Last seen")}: ${lastSeenLabel(device?.lastSeenAt || device?.lastSeen)}</div>
+      </div>
+      <div class="mode-toggle-panel">
+        <h3>Chuyển chế độ HoloBox</h3>
+        ${renderCustomerDeviceModeControls(device)}
+      </div>
     </div>
   </div>`;
 }

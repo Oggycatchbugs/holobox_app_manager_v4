@@ -1034,3 +1034,120 @@ label { display: grid; gap: 8px; font-weight: 800; color: var(--ink); }
 .ads-output-card .preview-actions {
   padding: 12px;
 }
+
+
+/* === v13.1.6 clean screen output + centered power icon === */
+.holobox-preview-card {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 14px;
+}
+.screen-output-area {
+  width: 100%;
+}
+.screen-control-area {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+}
+.preview-screen {
+  position: relative;
+  overflow: hidden;
+}
+.preview-screen.assistant-mode,
+.preview-screen.ads-mode,
+.preview-screen.off-mode {
+  min-height: min(58vh, 520px);
+}
+.preview-screen.assistant-mode {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.assistant-output {
+  width: 100%;
+  min-height: min(58vh, 520px);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 42px;
+}
+.preview-screen.ads-mode {
+  padding: 0 !important;
+  background: #000;
+  border-radius: 24px;
+}
+.holobox-ads-player {
+  display: block;
+  width: 100% !important;
+  height: min(58vh, 520px) !important;
+  min-height: 360px;
+  border-radius: 24px !important;
+  background: #000;
+  object-fit: cover !important;
+  box-shadow: none !important;
+}
+.screen-power-icon {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 34px;
+  font-weight: 950;
+  color: #fff;
+  background: rgba(8, 8, 8, .58);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 38px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.14);
+  transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.screen-power-icon:hover {
+  transform: translateX(-50%) translateY(-1px) scale(1.04);
+  background: rgba(152, 12, 10, .86);
+  box-shadow: 0 18px 42px rgba(152,12,10,.30), inset 0 0 0 1px rgba(255,255,255,.18);
+}
+.screen-power-icon.is-off {
+  background: rgba(152, 12, 10, .88);
+}
+.screen-power-icon.is-on {
+  background: rgba(18, 18, 18, .58);
+}
+.screen-power-icon .ico {
+  margin: 0;
+  line-height: 1;
+}
+.compact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #fff;
+}
+.ads-output-card {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+.ads-output-card .preview-meta,
+.ads-output-card .mode-toggle-panel,
+.ads-output-card .screen-control-area {
+  background: transparent;
+}
+.ads-output-card .preview-meta {
+  background: #fff;
+}
+.preview-topline,
+.preview-sub,
+.preview-actions,
+.single-power-action {
+  display: none !important;
+}

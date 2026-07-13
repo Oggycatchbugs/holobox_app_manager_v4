@@ -1228,7 +1228,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.5-phase2-ads-power-info-fix",
+        version: "13.1.6-phase2-clean-output-power-icon",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
