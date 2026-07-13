@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.4-phase2-customer-actions-layout-add-device";
+const APP_VERSION = "13.1.5-phase2-ads-power-info-fix";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -475,7 +475,7 @@ function renderAdminCustomers() {
             <div class="actions customer-actions">
               <button class="btn btn-small btn-primary" data-action="open-customer" data-id="${c.id}">${t("Open")}</button>
               <button class="btn btn-small" data-action="open-customer" data-id="${c.id}">${icon("plus")} Thêm HoloBox</button>
-              ${user ? `<button class="btn btn-small" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Info</button>` : ""}
+              ${user ? `<button class="btn btn-small" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Thông tin</button>` : ""}
               <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
               <button class="btn btn-small btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
             </div>
@@ -507,7 +507,7 @@ function renderAdminCustomerDashboard(customerId) {
         <p class="subtitle">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "—")}</p>
       </div>
       <div class="actions">
-        ${user ? `<button class="btn" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Login info</button>` : ""}
+        ${user ? `<button class="btn" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Thông tin đăng nhập</button>` : ""}
         <button class="btn btn-primary" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button><button class="btn btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
       </div>
     </div>
@@ -705,7 +705,7 @@ function renderAdsPlayer() {
   }
   const first = items[0];
   const ids = items.map(v => v.id).join(",");
-  return `<video class="holobox-ads-player" data-ads-player data-ids="${escapeHtml(ids)}" data-index="0" src="/api/media/file/video/${encodeURIComponent(first.id)}" autoplay muted playsinline controls></video>`;
+  return `<video class="holobox-ads-player" data-ads-player data-ids="${escapeHtml(ids)}" data-index="0" src="/api/media/file/video/${encodeURIComponent(first.id)}" autoplay playsinline controls></video>`;
 }
 function renderCustomerDeviceModeControls(activeDevice) {
   const devices = customerDevices();
@@ -724,20 +724,25 @@ function renderCustomerDeviceModeControls(activeDevice) {
 }
 function renderHoloboxScreenPreview(device) {
   const isAds = device?.runtimeMode === "JUST_ADS";
-  return `<div class="holobox-preview-card">
-    <div class="preview-screen ${isAds ? "ads-mode" : "assistant-mode"}">
-      <div class="preview-topline">${escapeHtml(isAds ? t("Just Ads Mode") : t("Assistant Mode"))}</div>
-      ${isAds ? renderAdsPlayer() : `<div class="preview-main">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>
+  const isOff = !device || device.powerCommand === "STOP";
+  const modeLabel = isAds ? t("Just Ads Mode") : t("Assistant Mode");
+  const powerLabel = isOff ? "Bật HoloBox" : "Tắt HoloBox";
+  return `<div class="holobox-preview-card ${isAds && !isOff ? "ads-output-card" : ""}">
+    <div class="preview-screen ${isOff ? "off-mode" : isAds ? "ads-mode" : "assistant-mode"}">
+      ${isOff
+        ? `<div class="preview-main turned-off-text">HoloBox turned off</div>`
+        : isAds
+          ? renderAdsPlayer()
+          : `<div class="preview-topline">${escapeHtml(modeLabel)}</div><div class="preview-main">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>
       <div class="preview-sub">${t("Now playing")}: ${escapeHtml(device?.currentAd || mediaName(device?.currentVideoId, "video") || "—")}</div>`}
     </div>
     <div class="preview-meta">
-      <div>${t("Status")}: ${statusBadge(computedDeviceStatus(device))}</div>
-      <div>${t("Mode")}: ${escapeHtml(device?.runtimeMode || "ASSISTANT")}</div>
+      <div>${t("Status")}: ${isOff ? statusBadge("Offline") : statusBadge(computedDeviceStatus(device))}</div>
+      <div>${t("Mode")}: ${escapeHtml(modeLabel)}</div>
       <div>${t("Last seen")}: ${lastSeenLabel(device?.lastSeenAt || device?.lastSeen)}</div>
     </div>
-    <div class="preview-actions">
-      <button class="big-power-btn" data-action="customer-start-device" data-id="${device?.id || ""}">${t("Start HoloBox")}</button>
-      <button class="action-btn" data-action="customer-stop-device" data-id="${device?.id || ""}">${t("Stop")}</button>
+    <div class="preview-actions single-power-action">
+      <button class="big-power-btn ${isOff ? "" : "danger-power"}" data-action="toggle-customer-device-power" data-id="${device?.id || ""}">${powerLabel}</button>
     </div>
     <div class="mode-toggle-panel">
       <h3>Chuyển chế độ HoloBox</h3>
@@ -988,6 +993,7 @@ const actionHandlers = {
     await saveData();
     toast("success", "Mode changed", next === "JUST_ADS" ? "Just Ads Mode" : "Assistant Mode");
     render();
+    if (next === "JUST_ADS") setTimeout(playAdsWithSound, 60);
   },
   "delete-assistant-template": async target => {
     const id = target.dataset.id || "";
@@ -1025,24 +1031,22 @@ const actionHandlers = {
     toast("success", "Auto playlist", `${videos.length} video(s) added.`);
     render();
   },
-  "customer-start-device": async target => {
+  "toggle-customer-device-power": async target => {
     const d = state.data.devices.find(x => x.id === target.dataset.id) || primaryDevice();
     if (!d) return toast("error", "No HoloBox", "Device has not been assigned yet.");
-    d.powerCommand = "START";
+    const isOff = d.powerCommand === "STOP";
+    d.powerCommand = isOff ? "START" : "STOP";
+    d.currentScreen = isOff
+      ? (d.runtimeMode === "JUST_ADS" ? "Ads Playlist" : "Assistant")
+      : "HoloBox turned off";
     d.requestedAt = new Date().toISOString();
     await saveData();
-    toast("success", "HoloBox requested", "Start command saved.");
+    toast("success", "HoloBox", isOff ? "Turned on" : "Turned off");
     render();
+    if (isOff && d.runtimeMode === "JUST_ADS") setTimeout(playAdsWithSound, 60);
   },
-  "customer-stop-device": async target => {
-    const d = state.data.devices.find(x => x.id === target.dataset.id) || primaryDevice();
-    if (!d) return;
-    d.powerCommand = "STOP";
-    d.requestedAt = new Date().toISOString();
-    await saveData();
-    toast("success", "HoloBox requested", "Stop command saved.");
-    render();
-  },
+  "customer-start-device": async target => actionHandlers["toggle-customer-device-power"](target),
+  "customer-stop-device": async target => actionHandlers["toggle-customer-device-power"](target),
   "preview-media": async target => {
     const kind = target.dataset.kind;
     const id = target.dataset.id;
@@ -1093,18 +1097,33 @@ document.addEventListener("click", e => {
   e.preventDefault();
   handleAction(target.dataset.action, target);
 });
+function playAdsWithSound() {
+  document.querySelectorAll("[data-ads-player]").forEach(player => {
+    try {
+      player.muted = false;
+      player.volume = 1;
+      const p = player.play();
+      if (p?.catch) p.catch(() => {});
+    } catch {}
+  });
+}
+
 document.addEventListener("ended", e => {
   const player = e.target.closest?.("[data-ads-player]");
   if (!player) return;
   const ids = String(player.dataset.ids || "").split(",").filter(Boolean);
   if (ids.length <= 1) {
     player.currentTime = 0;
+    player.muted = false;
+    player.volume = 1;
     player.play().catch(() => {});
     return;
   }
   const nextIndex = (Number(player.dataset.index || 0) + 1) % ids.length;
   player.dataset.index = String(nextIndex);
   player.src = `/api/media/file/video/${encodeURIComponent(ids[nextIndex])}`;
+  player.muted = false;
+  player.volume = 1;
   player.play().catch(() => {});
 }, true);
 
