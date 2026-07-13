@@ -630,6 +630,44 @@ async function handleAdminDeleteDevice(req, res, deviceId) {
   const saved = await saveState(current);
   sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user) });
 }
+
+async function handleAdminUpdateDevice(req, res, deviceId) {
+  const auth = await requireAdmin(req, res);
+  if (!auth) return;
+  const body = await readJson(req);
+  const row = await getStateRow();
+  const current = mergeState(row.data);
+  const device = current.devices.find(d =>
+    String(d.id || "") === String(deviceId) ||
+    normalizeName(d.deviceCode || "") === normalizeName(deviceId)
+  );
+  if (!device) {
+    sendError(res, 404, "Device not found.");
+    return;
+  }
+
+  const nextDeviceCode = cleanName(body.deviceCode || device.deviceCode || "");
+  const duplicated = current.devices.find(d =>
+    String(d.id || "") !== String(device.id) &&
+    normalizeName(d.deviceCode || "") === normalizeName(nextDeviceCode)
+  );
+  if (duplicated) {
+    sendError(res, 409, "Device code already exists.");
+    return;
+  }
+
+  device.name = cleanName(body.name || device.name || "HoloBox");
+  device.deviceCode = nextDeviceCode;
+  device.customerId = cleanName(body.customerId || device.customerId || "");
+  device.streamUrl = cleanName(body.streamUrl || "");
+  device.runtimeMode = body.runtimeMode || device.runtimeMode || "ASSISTANT";
+  device.idleAdsAfterSec = Number(body.idleAdsAfterSec || device.idleAdsAfterSec || 30);
+  device.updatedAt = Date.now();
+
+  addLog(current, "Devices", "Device updated", "SUCCESS", device.deviceCode || device.name);
+  const saved = await saveState(current);
+  sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user), device });
+}
 async function handleDeviceManifest(_req, res, deviceCode) {
   const row = await getStateRow();
   const current = mergeState(row.data);
@@ -1248,7 +1286,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.9-phase2-sidebar-power-device-delete",
+        version: "13.1.10-phase2-brand-device-edit-buttons",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
@@ -1285,6 +1323,12 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/api/admin/devices" && req.method === "POST") {
       await handleAdminCreateDevice(req, res);
+      return;
+    }
+
+    const adminDeviceUpdateMatch = pathname.match(/^\/api\/admin\/devices\/([^/]+)$/);
+    if (adminDeviceUpdateMatch && req.method === "PUT") {
+      await handleAdminUpdateDevice(req, res, decodeURIComponent(adminDeviceUpdateMatch[1]));
       return;
     }
 

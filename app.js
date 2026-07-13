@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.9-phase2-sidebar-power-device-delete";
+const APP_VERSION = "13.1.10-phase2-brand-device-edit-buttons";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -86,6 +86,16 @@ const dict = {
     "Mode": "Chế độ",
     "Status": "Trạng thái",
     "Last seen": "Lần cuối",
+    "Add HoloBox": "Thêm HoloBox",
+    "Info": "Thông tin",
+    "Login info": "Thông tin đăng nhập",
+    "Edit": "Sửa",
+    "Edit HoloBox": "Sửa HoloBox",
+    "Update device": "Cập nhật thiết bị",
+    "Device name": "Tên thiết bị",
+    "Stream URL": "Stream URL",
+    "Delete device": "Xóa thiết bị",
+    "Open customer": "Mở khách hàng",
     "Current screen": "Đang chiếu",
   },
   en: {}
@@ -335,14 +345,8 @@ function renderLogin() {
     <div class="login-tools">${renderLanguageTools()}<button class="header-btn" data-action="contact">${t("Contact")}</button></div>
     <section class="login-hero">
       <div class="login-brand-card">
-        <div class="brand-orb">HB</div>
+        <div class="tlc-login-logo">TLC</div>
         <h1>TLC HoloBox Manager</h1>
-        <p>Role-based portal for Admin and Customer operation.</p>
-        <div class="login-hints">
-          <span>${icon("lock")} Admin / Customer</span>
-          <span>${icon("monitor")} Device ready</span>
-          <span>${icon("media")} Ads + Audio</span>
-        </div>
       </div>
       <form class="login-card" data-form="login">
         <h2>${t("Login")}</h2>
@@ -372,6 +376,13 @@ function renderLanguageTools() {
   </div>`;
 }
 
+function accountLabel() {
+  const user = state.user || {};
+  const label = user.name || user.username || "User";
+  if (normalizeName(user.role) === "customer") return label;
+  return `${label} · ${user.role || ""}`.trim();
+}
+
 function renderTopbar(title, subtitle = "", subtitleIsHtml = false) {
   return `<header class="topbar">
     <div>
@@ -382,7 +393,7 @@ function renderTopbar(title, subtitle = "", subtitleIsHtml = false) {
       ${state.user?.role === "admin" && state.portal === "customer" ? `<button class="header-btn" data-action="back-admin">${icon("back")} ${t("Back to Admin")}</button>` : ""}
       ${renderLanguageTools()}
       <button class="header-btn" data-action="contact">${t("Contact")}</button>
-      <div class="account-pill">${escapeHtml(state.user?.name || state.user?.username || "User")} · ${escapeHtml(state.user?.role || "")}</div>
+      <div class="account-pill">${escapeHtml(accountLabel())}</div>
     </div>
   </header>`;
 }
@@ -400,9 +411,8 @@ function renderCustomerSidebarPower() {
 
 function renderSidebar(items, brandSub) {
   return `<aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">HB</div>
-      <div><div class="brand-title">HoloBox</div><div class="brand-sub">${escapeHtml(brandSub)}</div></div>
+    <div class="brand brand-logo-only">
+      <div class="tlc-sidebar-logo">TLC</div>
     </div>
     <nav class="nav">${items.map(([key, label, ico]) => `<button class="nav-btn ${state.view === key ? "active" : ""}" data-action="nav" data-view="${key}">${icon(ico)}<span>${t(label)}</span></button>`).join("")}</nav>
     ${renderCustomerSidebarPower()}
@@ -487,9 +497,9 @@ function renderAdminCustomers() {
             <div>${statusBadge(c.status || "active")}</div>
             <div class="actions customer-actions">
               <button class="btn btn-small btn-primary" data-action="open-customer" data-id="${c.id}">${t("Open")}</button>
-              <button class="btn btn-small" data-action="open-customer" data-id="${c.id}">${icon("plus")} Thêm HoloBox</button>
-              ${user ? `<button class="btn btn-small" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Thông tin</button>` : ""}
-              <button class="btn btn-small" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
+              <button class="btn btn-small btn-soft" data-action="open-customer" data-id="${c.id}">${icon("plus")} ${t("Add HoloBox")}</button>
+              ${user ? `<button class="btn btn-small btn-soft" data-action="customer-login-info" data-id="${c.id}">${icon("info")} ${t("Info")}</button>` : ""}
+              <button class="btn btn-small btn-soft" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button>
               <button class="btn btn-small btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
             </div>
           </div>`;
@@ -520,7 +530,7 @@ function renderAdminCustomerDashboard(customerId) {
         <p class="subtitle">${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "—")}</p>
       </div>
       <div class="actions">
-        ${user ? `<button class="btn" data-action="customer-login-info" data-id="${c.id}">${icon("info")} Thông tin đăng nhập</button>` : ""}
+        ${user ? `<button class="btn" data-action="customer-login-info" data-id="${c.id}">${icon("info")} ${t("Login info")}</button>` : ""}
         <button class="btn btn-primary" data-action="view-as-customer" data-id="${c.id}">${t("View as Customer")}</button><button class="btn btn-danger" data-action="delete-customer" data-id="${c.id}">${t("Delete")}</button>
       </div>
     </div>
@@ -578,7 +588,10 @@ function renderDeviceTable(devices, admin = false) {
           <b>${escapeHtml(d.name || "HoloBox")}</b>
           <div class="sub">${escapeHtml(d.deviceCode || "—")}${admin ? ` · ${escapeHtml(customerName(d.customerId))}` : ""}</div>
         </div>
-        <button class="btn btn-small btn-danger device-delete-btn" data-action="delete-device" data-id="${d.id}">${t("Delete")}</button>
+        <div class="device-card-actions">
+          <button class="btn btn-small btn-soft" data-action="edit-device" data-id="${d.id}">${t("Edit")}</button>
+          <button class="btn btn-small btn-danger device-delete-btn" data-action="delete-device" data-id="${d.id}">${t("Delete")}</button>
+        </div>
       </div>
       <div class="device-card-meta">
         <div><span>Status</span>${statusBadge(computedDeviceStatus(d))}</div>
@@ -1078,6 +1091,20 @@ const actionHandlers = {
   },
   "customer-start-device": async target => actionHandlers["toggle-customer-device-power"](target),
   "customer-stop-device": async target => actionHandlers["toggle-customer-device-power"](target),
+  "edit-device": async target => {
+    const id = target.dataset.id || "";
+    const d = state.data.devices.find(x => x.id === id);
+    if (!d) return toast("error", "Device not found");
+    modal(t("Edit HoloBox"), `<form class="form-card modal-form" data-form="admin-edit-device">
+      <input type="hidden" name="id" value="${escapeHtml(d.id)}">
+      <label>${t("Device name")}<input class="input" name="name" required value="${escapeHtml(d.name || "")}"></label>
+      <label>${t("Device code")}<input class="input" name="deviceCode" required value="${escapeHtml(d.deviceCode || "")}"></label>
+      <label>${t("Customer")}<select name="customerId" required>${state.data.customers.map(c => `<option value="${c.id}" ${c.id === d.customerId ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}</select></label>
+      <label>${t("Stream URL")}<input class="input" name="streamUrl" value="${escapeHtml(d.streamUrl || "")}" placeholder="http://.../video_feed"></label>
+      <label>${t("Mode")}<select name="runtimeMode"><option value="ASSISTANT" ${d.runtimeMode !== "JUST_ADS" ? "selected" : ""}>Assistant Mode</option><option value="JUST_ADS" ${d.runtimeMode === "JUST_ADS" ? "selected" : ""}>Just Ads Mode</option></select></label>
+      <button class="btn btn-primary wide" type="submit">${t("Update device")}</button>
+    </form>`, `<button class="btn" data-action="close-modal">${t("Close")}</button>`);
+  },
   "delete-device": async target => {
     const id = target.dataset.id || "";
     const device = state.data.devices.find(d => d.id === id);
@@ -1225,6 +1252,17 @@ document.addEventListener("submit", async e => {
       const payload = await apiJson("/api/admin/devices", { method: "POST", body: JSON.stringify(data) });
       state.data = mergeData(payload.data);
       toast("success", "Device created", data.deviceCode);
+      render();
+    }
+    if (form.dataset.form === "admin-edit-device") {
+      const id = data.id;
+      const payload = await apiJson(`/api/admin/devices/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify(data)
+      });
+      state.data = mergeData(payload.data);
+      toast("success", "Device updated", data.deviceCode);
+      closeModal();
       render();
     }
     if (form.dataset.form === "admin-create-assistant-template") {

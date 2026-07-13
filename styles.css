@@ -1394,3 +1394,71 @@ label { display: grid; gap: 8px; font-weight: 800; color: var(--ink); }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* === v13.1.10 TLC logo, clean login, account pill, device edit buttons === */
+.brand-logo-only {
+  justify-content: center;
+  min-height: 96px;
+}
+.tlc-sidebar-logo,
+.tlc-login-logo {
+  font-weight: 950;
+  letter-spacing: -.06em;
+  color: #ffbd59;
+  text-shadow: 0 12px 34px rgba(255, 189, 89, .22);
+  font-family: inherit;
+}
+.tlc-sidebar-logo {
+  font-size: 46px;
+  line-height: 1;
+}
+.tlc-login-logo {
+  width: 128px;
+  height: 128px;
+  border-radius: 36px;
+  display: grid;
+  place-items: center;
+  font-size: 52px;
+  background: linear-gradient(145deg, #980c0a, #15100d);
+  box-shadow: 0 26px 70px rgba(152, 12, 10, .24);
+}
+.login-brand-card p,
+.login-hints {
+  display: none !important;
+}
+.account-pill {
+  white-space: nowrap;
+}
+.btn-soft {
+  border-color: rgba(152, 12, 10, .16) !important;
+  background: #fff7f3 !important;
+  color: #980c0a !important;
+  box-shadow: 0 1px 0 rgba(12, 27, 48, .03) !important;
+}
+.btn-soft:hover {
+  background: #fff0e8 !important;
+  border-color: rgba(152, 12, 10, .28) !important;
+}
+.device-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.device-card-actions .btn {
+  min-width: 88px;
+}
+.modal-form {
+  box-shadow: none;
+}
+@media (max-width: 700px) {
+  .device-card-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .device-card-actions .btn {
+    flex: 1 1 auto;
+  }
+}
