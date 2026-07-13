@@ -1248,7 +1248,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.8-phase2-device-delete-stream-output",
+        version: "13.1.9-phase2-sidebar-power-device-delete",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,

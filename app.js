@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.8-phase2-device-delete-stream-output";
+const APP_VERSION = "13.1.9-phase2-sidebar-power-device-delete";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -386,6 +386,18 @@ function renderTopbar(title, subtitle = "", subtitleIsHtml = false) {
     </div>
   </header>`;
 }
+function renderCustomerSidebarPower() {
+  if (state.portal !== "customer") return "";
+  const device = primaryDevice();
+  const isOff = !device || device.powerCommand === "STOP";
+  const title = isOff ? "Bật HoloBox" : "Tắt HoloBox";
+  return `<div class="sidebar-power-dock">
+    <button class="sidebar-power-button ${isOff ? "is-off" : "is-on"}" data-action="toggle-customer-device-power" data-id="${device?.id || ""}" title="${title}" aria-label="${title}">
+      ${icon("power")}
+    </button>
+  </div>`;
+}
+
 function renderSidebar(items, brandSub) {
   return `<aside class="sidebar">
     <div class="brand">
@@ -393,6 +405,7 @@ function renderSidebar(items, brandSub) {
       <div><div class="brand-title">HoloBox</div><div class="brand-sub">${escapeHtml(brandSub)}</div></div>
     </div>
     <nav class="nav">${items.map(([key, label, ico]) => `<button class="nav-btn ${state.view === key ? "active" : ""}" data-action="nav" data-view="${key}">${icon(ico)}<span>${t(label)}</span></button>`).join("")}</nav>
+    ${renderCustomerSidebarPower()}
     <div class="sidebar-spacer"></div>
     <button class="nav-btn logout" data-action="logout">${icon("logout")}<span>${t("Logout")}</span></button>
   </aside>`;
@@ -558,18 +571,20 @@ function renderAdminDevices() {
   </div>`;
 }
 function renderDeviceTable(devices, admin = false) {
-  const gridCls = admin ? "device-admin-grid device-grid-with-customer" : "device-admin-grid device-grid-no-customer";
-  return `<div class="table device-table">
-    <div class="table-head ${gridCls}"><div>Device</div>${admin ? "<div>Customer</div>" : ""}<div>Status</div><div>Mode</div><div>Last seen</div><div>Screen</div><div>Actions</div></div>
-    ${devices.map(d => `<div class="table-row ${gridCls}">
-      <div><b>${escapeHtml(d.name || "HoloBox")}</b><div class="sub">${escapeHtml(d.deviceCode || "—")}</div></div>
-      ${admin ? `<div>${escapeHtml(customerName(d.customerId))}</div>` : ""}
-      <div>${statusBadge(computedDeviceStatus(d))}</div>
-      <div>${escapeHtml(d.runtimeMode || "ASSISTANT")}</div>
-      <div>${lastSeenLabel(d.lastSeenAt || d.lastSeen)}</div>
-      <div class="sub">${escapeHtml(d.currentScreen || d.currentAd || d.streamUrl || "—")}</div>
-      <div class="actions device-actions">
-        <button class="btn btn-small btn-danger" data-action="delete-device" data-id="${d.id}">${t("Delete")}</button>
+  return `<div class="device-card-list">
+    ${devices.map(d => `<div class="device-card-item">
+      <div class="device-card-head">
+        <div>
+          <b>${escapeHtml(d.name || "HoloBox")}</b>
+          <div class="sub">${escapeHtml(d.deviceCode || "—")}${admin ? ` · ${escapeHtml(customerName(d.customerId))}` : ""}</div>
+        </div>
+        <button class="btn btn-small btn-danger device-delete-btn" data-action="delete-device" data-id="${d.id}">${t("Delete")}</button>
+      </div>
+      <div class="device-card-meta">
+        <div><span>Status</span>${statusBadge(computedDeviceStatus(d))}</div>
+        <div><span>Mode</span><b>${escapeHtml(d.runtimeMode || "ASSISTANT")}</b></div>
+        <div><span>Last seen</span><b>${lastSeenLabel(d.lastSeenAt || d.lastSeen)}</b></div>
+        <div><span>Screen / Stream</span><b>${escapeHtml(d.currentScreen || d.currentAd || d.streamUrl || "—")}</b></div>
       </div>
     </div>`).join("") || `<div class="empty">${t("No data")}</div>`}
   </div>`;
@@ -744,11 +759,6 @@ function renderHoloboxScreenPreview(device) {
   const powerTitle = isOff ? "Bật HoloBox" : "Tắt HoloBox";
   return `<div class="holobox-preview-card ${isAds && !isOff ? "ads-output-card" : ""}">
     <div class="screen-output-area">
-      <div class="screen-power-bar">
-        <button class="screen-power-icon ${isOff ? "is-off" : "is-on"}" data-action="toggle-customer-device-power" data-id="${device?.id || ""}" title="${powerTitle}" aria-label="${powerTitle}">
-          ${icon("power")}
-        </button>
-      </div>
       <div class="preview-screen ${isOff ? "off-mode" : isAds ? "ads-mode" : "assistant-mode"}">
         ${isOff
           ? `<div class="preview-main turned-off-text">HoloBox turned off</div>`
