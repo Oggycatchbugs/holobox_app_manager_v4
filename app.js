@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.7-phase2-power-icon-top-white";
+const APP_VERSION = "13.1.8-phase2-device-delete-stream-output";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -558,18 +558,23 @@ function renderAdminDevices() {
   </div>`;
 }
 function renderDeviceTable(devices, admin = false) {
-  return `<div class="table">
-    <div class="table-head device-admin-grid"><div>Device</div>${admin ? "<div>Customer</div>" : ""}<div>Status</div><div>Mode</div><div>Last seen</div><div>Screen</div></div>
-    ${devices.map(d => `<div class="table-row device-admin-grid">
+  const gridCls = admin ? "device-admin-grid device-grid-with-customer" : "device-admin-grid device-grid-no-customer";
+  return `<div class="table device-table">
+    <div class="table-head ${gridCls}"><div>Device</div>${admin ? "<div>Customer</div>" : ""}<div>Status</div><div>Mode</div><div>Last seen</div><div>Screen</div><div>Actions</div></div>
+    ${devices.map(d => `<div class="table-row ${gridCls}">
       <div><b>${escapeHtml(d.name || "HoloBox")}</b><div class="sub">${escapeHtml(d.deviceCode || "—")}</div></div>
       ${admin ? `<div>${escapeHtml(customerName(d.customerId))}</div>` : ""}
       <div>${statusBadge(computedDeviceStatus(d))}</div>
       <div>${escapeHtml(d.runtimeMode || "ASSISTANT")}</div>
       <div>${lastSeenLabel(d.lastSeenAt || d.lastSeen)}</div>
-      <div class="sub">${escapeHtml(d.currentScreen || d.currentAd || "—")}</div>
+      <div class="sub">${escapeHtml(d.currentScreen || d.currentAd || d.streamUrl || "—")}</div>
+      <div class="actions device-actions">
+        <button class="btn btn-small btn-danger" data-action="delete-device" data-id="${d.id}">${t("Delete")}</button>
+      </div>
     </div>`).join("") || `<div class="empty">${t("No data")}</div>`}
   </div>`;
 }
+
 function renderAdminMedia() {
   const tab = state.mediaTab || "video";
   return `<section class="panel">
@@ -722,6 +727,16 @@ function renderCustomerDeviceModeControls(activeDevice) {
     }).join("")}
   </div>`;
 }
+function renderLiveStreamOutput(device) {
+  const url = device?.streamUrl || device?.liveUrl || "";
+  if (!url) {
+    return `<div class="preview-main assistant-output">${escapeHtml(device?.currentScreen || "Assistant / Stream")}</div>`;
+  }
+  return `<div class="stream-output-wrap">
+    <img class="holobox-stream-output" src="${escapeHtml(url)}" alt="HoloBox stream" loading="eager">
+  </div>`;
+}
+
 function renderHoloboxScreenPreview(device) {
   const isAds = device?.runtimeMode === "JUST_ADS";
   const isOff = !device || device.powerCommand === "STOP";
@@ -739,7 +754,7 @@ function renderHoloboxScreenPreview(device) {
           ? `<div class="preview-main turned-off-text">HoloBox turned off</div>`
           : isAds
             ? renderAdsPlayer()
-            : `<div class="preview-main assistant-output">${escapeHtml(device?.currentScreen || t("HoloBox Screen"))}</div>`}
+            : renderLiveStreamOutput(device)}
       </div>
     </div>
 
@@ -1053,6 +1068,16 @@ const actionHandlers = {
   },
   "customer-start-device": async target => actionHandlers["toggle-customer-device-power"](target),
   "customer-stop-device": async target => actionHandlers["toggle-customer-device-power"](target),
+  "delete-device": async target => {
+    const id = target.dataset.id || "";
+    const device = state.data.devices.find(d => d.id === id);
+    const ok = await confirmModal("Delete HoloBox", `Xóa device "${device?.name || device?.deviceCode || id}" khỏi khách hàng này?`);
+    if (!ok) return;
+    const payload = await apiJson(`/api/admin/devices/${encodeURIComponent(id)}`, { method: "DELETE" });
+    state.data = mergeData(payload.data);
+    toast("success", "Device deleted");
+    render();
+  },
   "preview-media": async target => {
     const kind = target.dataset.kind;
     const id = target.dataset.id;

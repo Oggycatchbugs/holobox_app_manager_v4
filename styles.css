@@ -1212,3 +1212,51 @@ label { display: grid; gap: 8px; font-weight: 800; color: var(--ink); }
 .ads-output-card .screen-output-area {
   background: #fff;
 }
+
+
+/* === v13.1.8 device delete + stream output screen === */
+.device-table .device-actions {
+  justify-content: flex-start;
+}
+.device-grid-with-customer {
+  grid-template-columns: minmax(170px, 1.25fr) minmax(130px, .9fr) 110px 120px 130px minmax(150px, 1fr) 100px !important;
+}
+.device-grid-no-customer {
+  grid-template-columns: minmax(180px, 1.35fr) 110px 120px 130px minmax(160px, 1fr) 100px !important;
+}
+.stream-output-wrap,
+.holobox-stream-output {
+  width: 100%;
+  height: min(58vh, 520px);
+  min-height: 360px;
+  display: block;
+}
+.stream-output-wrap {
+  background: #080808;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.holobox-stream-output {
+  object-fit: cover;
+}
+.preview-screen.assistant-mode {
+  background: #050505;
+}
+.preview-screen.assistant-mode .assistant-output {
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(255,189,89,.12), transparent 35%),
+    linear-gradient(135deg, #100807, #1d0c0b 60%, #050505);
+}
+.screen-power-bar {
+  min-height: 70px;
+  margin-bottom: 10px;
+}
+@media (max-width: 980px) {
+  .device-table .table-head {
+    display: none;
+  }
+  .device-table .table-row {
+    grid-template-columns: 1fr !important;
+  }
+}

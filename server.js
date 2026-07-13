@@ -610,6 +610,26 @@ async function handleAdminCreateDevice(req, res) {
   const saved = await saveState(current);
   sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user), device });
 }
+
+async function handleAdminDeleteDevice(req, res, deviceId) {
+  const auth = await requireAdmin(req, res);
+  if (!auth) return;
+  const row = await getStateRow();
+  const current = mergeState(row.data);
+  const device = current.devices.find(d =>
+    String(d.id || "") === String(deviceId) ||
+    normalizeName(d.deviceCode || "") === normalizeName(deviceId)
+  );
+  if (!device) {
+    sendError(res, 404, "Device not found.");
+    return;
+  }
+
+  current.devices = current.devices.filter(d => String(d.id || "") !== String(device.id));
+  addLog(current, "Devices", "Device deleted", "WARNING", device.deviceCode || device.name || device.id);
+  const saved = await saveState(current);
+  sendJson(res, 200, { ok: true, data: scopeStateForUser(saved.data, auth.user) });
+}
 async function handleDeviceManifest(_req, res, deviceCode) {
   const row = await getStateRow();
   const current = mergeState(row.data);
@@ -1228,7 +1248,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.7-phase2-power-icon-top-white",
+        version: "13.1.8-phase2-device-delete-stream-output",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
@@ -1265,6 +1285,12 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/api/admin/devices" && req.method === "POST") {
       await handleAdminCreateDevice(req, res);
+      return;
+    }
+
+    const adminDeviceDeleteMatch = pathname.match(/^\/api\/admin\/devices\/([^/]+)$/);
+    if (adminDeviceDeleteMatch && req.method === "DELETE") {
+      await handleAdminDeleteDevice(req, res, decodeURIComponent(adminDeviceDeleteMatch[1]));
       return;
     }
 
