@@ -1,4 +1,4 @@
-const APP_VERSION = "13.1.0-phase2-customer-admin-refactor";
+const APP_VERSION = "13.1.2-phase2-login-password-eye";
 const APP_FEATURES = [
   "phase2-customer-upload-polish",
   "one-admin-only-bootstrap",
@@ -162,7 +162,7 @@ function icon(name) {
     home: "⌂", video: "▶", audio: "♪", logout: "↩", users: "👥", monitor: "▣", media: "▤",
     assistant: "◉", logs: "≡", wrench: "⚙", settings: "⚙", plus: "+", upload: "⇧",
     trash: "×", play: "▶", phone: "☎", mail: "✉", lock: "●", dashboard: "◆", back: "←",
-    save: "✓", refresh: "↻", search: "⌕"
+    save: "✓", refresh: "↻", search: "⌕", eye: "👁", eyeOff: "◉"
   };
   return `<span class="ico">${map[name] || "•"}</span>`;
 }
@@ -348,7 +348,12 @@ function renderLogin() {
         <h2>${t("Login")}</h2>
         <p class="subtitle">Default admin: <b>admin</b> / <b>admin123</b>. Change this after first deploy.</p>
         <label>${t("Username")}<input class="input" name="username" autocomplete="username" required></label>
-        <label>${t("Password")}<input class="input" name="password" type="password" autocomplete="current-password" required></label>
+        <label>${t("Password")}
+          <div class="password-field">
+            <input class="input" name="password" type="password" autocomplete="current-password" required data-login-password>
+            <button class="password-eye" type="button" data-action="toggle-login-password" aria-label="Show password" title="Hiện mật khẩu">${icon("eye")}</button>
+          </div>
+        </label>
         <button class="action-btn primary wide" type="submit">${t("Login")}</button>
       </form>
     </section>
@@ -834,6 +839,18 @@ const actionHandlers = {
     </div>`, `<button class="action-btn primary" data-action="close-modal">${t("Close")}</button>`);
   },
   "close-modal": async () => closeModal(),
+  "toggle-login-password": async target => {
+    const wrap = target.closest(".password-field");
+    const input = wrap?.querySelector("[data-login-password]");
+    if (!input) return;
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    target.classList.toggle("is-visible", show);
+    target.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    target.setAttribute("title", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
+    target.innerHTML = show ? `${icon("eyeOff")}` : `${icon("eye")}`;
+    input.focus();
+  },
   "logout": async () => {
     await apiJson("/api/auth/logout", { method: "POST", body: "{}" });
     state.user = null;

@@ -1145,7 +1145,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         service: "holobox-manager-tlc",
-        version: "13.1.1-phase2-customer-login-secret-preserve",
+        version: "13.1.2-phase2-login-password-eye",
         supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY),
         stateTable: STATE_TABLE,
         stateId: resolvedStateId || STATE_ID_ENV || null,
