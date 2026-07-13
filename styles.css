@@ -1462,3 +1462,40 @@ label { display: grid; gap: 8px; font-weight: 800; color: var(--ink); }
     flex: 1 1 auto;
   }
 }
+
+
+/* === v13.1.11 real TLC logo === */
+.tlc-login-logo,
+.tlc-sidebar-logo {
+  display: block;
+  object-fit: contain;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.tlc-login-logo {
+  width: min(320px, 72%);
+  max-width: 320px;
+  height: auto;
+  margin: 0 auto 10px;
+  filter: drop-shadow(0 14px 28px rgba(152, 12, 10, 0.20));
+}
+
+.tlc-sidebar-logo {
+  width: 128px;
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 8px 18px rgba(152, 12, 10, 0.16));
+}
+
+.brand-logo-only {
+  min-height: 120px;
+  padding-block: 8px 10px;
+}
+
+@media (max-width: 900px) {
+  .tlc-sidebar-logo {
+    width: 104px;
+  }
+}
